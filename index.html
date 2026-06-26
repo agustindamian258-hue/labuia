@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LabuIA - Empleos con IA</title>
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -32,13 +33,13 @@
     </div>
     <div class="contenido">
       <h2>Tu perfil</h2>
-      <p class="subtitulo">Completá tus datos para que la IA encuentre los mejores empleos para vos</p>
+      <p class="subtitulo">Completá tus datos para encontrar los mejores empleos</p>
 
       <label>Tu nombre</label>
       <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
 
       <label>¿Qué puesto buscás?</label>
-      <input type="text" id="puesto" placeholder="Ej: Desarrollador, Diseñador, Contador...">
+      <input type="text" id="puesto" placeholder="Ej: Operario, Diseñador, Contador...">
 
       <label>¿En qué ciudad?</label>
       <input type="text" id="ciudad" placeholder="Ej: Buenos Aires, Córdoba...">
@@ -50,8 +51,75 @@
         <button class="toggle" data-valor="hibrido">Híbrido</button>
       </div>
 
-      <label>Tu CV (pegá el texto acá)</label>
-      <textarea id="cv" placeholder="Nombre: Juan Pérez&#10;Experiencia: 3 años como desarrollador&#10;Habilidades: React, Node.js, Python&#10;Estudios: Ingeniería en Sistemas&#10;..."></textarea>
+      <label>Tu CV</label>
+      <div class="cv-opciones">
+
+        <!-- OPCIÓN 1: SUBIR PDF -->
+        <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
+          <span class="cv-opcion-icono">📄</span>
+          <div>
+            <div class="cv-opcion-titulo">Subir mi CV en PDF</div>
+            <div class="cv-opcion-sub">La IA extrae el texto automáticamente</div>
+          </div>
+        </div>
+
+        <!-- OPCIÓN 2: PEGAR TEXTO -->
+        <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
+          <span class="cv-opcion-icono">✏️</span>
+          <div>
+            <div class="cv-opcion-titulo">Pegar texto de mi CV</div>
+            <div class="cv-opcion-sub">Copiá y pegá tu CV directamente</div>
+          </div>
+        </div>
+
+        <!-- OPCIÓN 3: GENERAR CON IA -->
+        <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
+          <span class="cv-opcion-icono">🤖</span>
+          <div>
+            <div class="cv-opcion-titulo">No tengo CV, que lo haga la IA</div>
+            <div class="cv-opcion-sub">Completás tus datos y la IA lo genera</div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ZONA PDF -->
+      <div id="zona-pdf" class="zona-cv oculto">
+        <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
+          <span class="upload-icono">📁</span>
+          <p>Tocá para seleccionar tu PDF</p>
+          <small>Solo archivos .pdf</small>
+        </div>
+        <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
+        <div id="pdf-estado"></div>
+      </div>
+
+      <!-- ZONA TEXTO -->
+      <div id="zona-texto" class="zona-cv oculto">
+        <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá...&#10;&#10;Nombre: Juan Pérez&#10;Experiencia: 3 años como operario&#10;Habilidades: manejo de maquinaria, trabajo en equipo&#10;Estudios: Secundario completo"></textarea>
+      </div>
+
+      <!-- ZONA GENERAR -->
+      <div id="zona-generar" class="zona-cv oculto">
+        <div class="generar-form">
+          <label>¿Cuántos años de experiencia tenés?</label>
+          <input type="text" id="gen-experiencia" placeholder="Ej: 2 años, Sin experiencia...">
+
+          <label>¿En qué trabajaste antes?</label>
+          <input type="text" id="gen-trabajos" placeholder="Ej: Repositor en supermercado, operario textil...">
+
+          <label>¿Qué habilidades tenés?</label>
+          <input type="text" id="gen-habilidades" placeholder="Ej: Manejo de PC, licencia de conducir, trabajo en equipo...">
+
+          <label>Estudios</label>
+          <input type="text" id="gen-estudios" placeholder="Ej: Secundario completo, Técnico en...">
+
+          <button class="btn-secundario" onclick="generarCVconIA()">
+            🤖 Generar mi CV con IA
+          </button>
+          <div id="cv-generado-preview"></div>
+        </div>
+      </div>
 
       <button class="btn-principal" onclick="guardarPerfilYBuscar()">
         🔍 Buscar empleos
@@ -68,7 +136,7 @@
     </div>
     <div class="contenido">
       <h2 id="titulo-resultados">Buscando empleos...</h2>
-      <p class="subtitulo" id="subtitulo-resultados">La IA está analizando las mejores opciones para vos</p>
+      <p class="subtitulo" id="subtitulo-resultados">La IA está analizando las mejores opciones</p>
       <div id="lista-empleos"></div>
     </div>
   </div>
@@ -97,7 +165,7 @@
 
   <!-- NAVBAR -->
   <nav class="navbar">
-    <button class="nav-item" onclick="irA('pantalla-perfil'); setNav(this)">
+    <button class="nav-item activo" onclick="irA('pantalla-perfil'); setNav(this)">
       <span>🔍</span><small>Buscar</small>
     </button>
     <button class="nav-item" onclick="irA('pantalla-postulaciones'); cargarPostulaciones(); setNav(this)">
