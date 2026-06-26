@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabuIA - Empleos con IA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- PANTALLA 1: BIENVENIDA -->
+  <div class="pantalla activa" id="pantalla-inicio">
+    <div class="inicio-contenido">
+      <div class="logo-grande">Labu<span>IA</span></div>
+      <p class="tagline">Tu asistente de empleo inteligente</p>
+      <div class="features">
+        <div class="feature-item">🔍 Busca empleos en Argentina</div>
+        <div class="feature-item">🤖 La IA analiza tu compatibilidad</div>
+        <div class="feature-item">💼 Te ayuda a postularte</div>
+      </div>
+      <button class="btn-principal" onclick="irA('pantalla-perfil')">
+        Empezar gratis
+      </button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 2: MI PERFIL / CV -->
+  <div class="pantalla" id="pantalla-perfil">
+    <div class="header-app">
+      <h1>Labu<span>IA</span></h1>
+      <button class="btn-icono" onclick="irA('pantalla-inicio')">✕</button>
+    </div>
+    <div class="contenido">
+      <h2>Tu perfil</h2>
+      <p class="subtitulo">Completá tus datos para que la IA encuentre los mejores empleos para vos</p>
+
+      <label>Tu nombre</label>
+      <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
+
+      <label>¿Qué puesto buscás?</label>
+      <input type="text" id="puesto" placeholder="Ej: Desarrollador, Diseñador, Contador...">
+
+      <label>¿En qué ciudad?</label>
+      <input type="text" id="ciudad" placeholder="Ej: Buenos Aires, Córdoba...">
+
+      <label>Modalidad</label>
+      <div class="toggles">
+        <button class="toggle activo" data-valor="remoto">Remoto</button>
+        <button class="toggle" data-valor="presencial">Presencial</button>
+        <button class="toggle" data-valor="hibrido">Híbrido</button>
+      </div>
+
+      <label>Tu CV (pegá el texto acá)</label>
+      <textarea id="cv" placeholder="Nombre: Juan Pérez&#10;Experiencia: 3 años como desarrollador&#10;Habilidades: React, Node.js, Python&#10;Estudios: Ingeniería en Sistemas&#10;..."></textarea>
+
+      <button class="btn-principal" onclick="guardarPerfilYBuscar()">
+        🔍 Buscar empleos
+      </button>
+    </div>
+  </div>
+
+  <!-- PANTALLA 3: RESULTADOS -->
+  <div class="pantalla" id="pantalla-resultados">
+    <div class="header-app">
+      <button class="btn-volver" onclick="irA('pantalla-perfil')">← Volver</button>
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido">
+      <h2 id="titulo-resultados">Buscando empleos...</h2>
+      <p class="subtitulo" id="subtitulo-resultados">La IA está analizando las mejores opciones para vos</p>
+      <div id="lista-empleos"></div>
+    </div>
+  </div>
+
+  <!-- PANTALLA 4: DETALLE EMPLEO -->
+  <div class="pantalla" id="pantalla-detalle">
+    <div class="header-app">
+      <button class="btn-volver" onclick="irA('pantalla-resultados')">← Volver</button>
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido" id="contenido-detalle"></div>
+  </div>
+
+  <!-- PANTALLA 5: POSTULACIONES -->
+  <div class="pantalla" id="pantalla-postulaciones">
+    <div class="header-app">
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido">
+      <h2>Mis postulaciones</h2>
+      <div id="lista-postulaciones"></div>
+    </div>
+  </div>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <button class="nav-item" onclick="irA('pantalla-perfil'); setNav(this)">
+      <span>🔍</span><small>Buscar</small>
+    </button>
+    <button class="nav-item" onclick="irA('pantalla-postulaciones'); cargarPostulaciones(); setNav(this)">
+      <span>💼</span><small>Postulaciones</small>
+    </button>
+  </nav>
+
+  <script src="app.js"></script>
+</body>
+  </html>
