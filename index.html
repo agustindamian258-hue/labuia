@@ -53,17 +53,13 @@
 
       <label>Tu CV</label>
       <div class="cv-opciones">
-
-        <!-- OPCIÓN 1: SUBIR PDF -->
         <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
           <span class="cv-opcion-icono">📄</span>
           <div>
             <div class="cv-opcion-titulo">Subir mi CV en PDF</div>
-            <div class="cv-opcion-sub">La IA extrae el texto automáticamente</div>
+            <div class="cv-opcion-sub">La app extrae el texto automáticamente</div>
           </div>
         </div>
-
-        <!-- OPCIÓN 2: PEGAR TEXTO -->
         <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
           <span class="cv-opcion-icono">✏️</span>
           <div>
@@ -71,8 +67,6 @@
             <div class="cv-opcion-sub">Copiá y pegá tu CV directamente</div>
           </div>
         </div>
-
-        <!-- OPCIÓN 3: GENERAR CON IA -->
         <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
           <span class="cv-opcion-icono">🤖</span>
           <div>
@@ -80,7 +74,6 @@
             <div class="cv-opcion-sub">Completás tus datos y la IA lo genera</div>
           </div>
         </div>
-
       </div>
 
       <!-- ZONA PDF -->
@@ -96,7 +89,7 @@
 
       <!-- ZONA TEXTO -->
       <div id="zona-texto" class="zona-cv oculto">
-        <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá...&#10;&#10;Nombre: Juan Pérez&#10;Experiencia: 3 años como operario&#10;Habilidades: manejo de maquinaria, trabajo en equipo&#10;Estudios: Secundario completo"></textarea>
+        <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
       </div>
 
       <!-- ZONA GENERAR -->
@@ -104,20 +97,35 @@
         <div class="generar-form">
           <label>¿Cuántos años de experiencia tenés?</label>
           <input type="text" id="gen-experiencia" placeholder="Ej: 2 años, Sin experiencia...">
-
           <label>¿En qué trabajaste antes?</label>
-          <input type="text" id="gen-trabajos" placeholder="Ej: Repositor en supermercado, operario textil...">
-
+          <input type="text" id="gen-trabajos" placeholder="Ej: Repositor, operario textil...">
           <label>¿Qué habilidades tenés?</label>
-          <input type="text" id="gen-habilidades" placeholder="Ej: Manejo de PC, licencia de conducir, trabajo en equipo...">
-
+          <input type="text" id="gen-habilidades" placeholder="Ej: Licencia de conducir, manejo de PC...">
           <label>Estudios</label>
-          <input type="text" id="gen-estudios" placeholder="Ej: Secundario completo, Técnico en...">
-
+          <input type="text" id="gen-estudios" placeholder="Ej: Secundario completo...">
           <button class="btn-secundario" onclick="generarCVconIA()">
             🤖 Generar mi CV con IA
           </button>
           <div id="cv-generado-preview"></div>
+        </div>
+      </div>
+
+      <!-- CONFIGURACIÓN IA -->
+      <div class="api-key-box">
+        <div class="api-key-header" onclick="toggleAPIkey()">
+          <span>⚙️ Configuración de IA</span>
+          <span id="api-key-arrow">▼</span>
+        </div>
+        <div id="api-key-zona" class="oculto">
+          <p class="api-key-info">
+            Pegá tu API Key de Gemini para activar análisis real con IA.
+            Es completamente gratis en aistudio.google.com
+          </p>
+          <input type="password" id="gemini-key" placeholder="AIza...">
+          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">
+            💾 Guardar API Key
+          </button>
+          <div id="api-key-estado"></div>
         </div>
       </div>
 
@@ -175,4 +183,4 @@
 
   <script src="app.js"></script>
 </body>
-  </html>
+</html>
