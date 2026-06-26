@@ -142,6 +142,7 @@ textarea {
   outline: none;
   resize: none;
   line-height: 1.5;
+  margin-top: 8px;
 }
 
 textarea:focus {
@@ -173,6 +174,143 @@ textarea:focus {
   font-weight: 600;
 }
 
+/* == OPCIONES DE CV == */
+.cv-opciones {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cv-opcion {
+  background: #111f3a;
+  border: 2px solid #1e3a6e;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.cv-opcion.activo {
+  border-color: #7c3aed;
+  background: #1a1050;
+}
+
+.cv-opcion-icono {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.cv-opcion-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.cv-opcion-sub {
+  font-size: 12px;
+  color: #8899aa;
+}
+
+/* == ZONAS CV == */
+.zona-cv {
+  margin-top: 16px;
+}
+
+.oculto {
+  display: none;
+}
+
+/* == UPLOAD BOX == */
+.upload-box {
+  background: #111f3a;
+  border: 2px dashed #1e3a6e;
+  border-radius: 14px;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.upload-box:active {
+  border-color: #7c3aed;
+}
+
+.upload-icono {
+  font-size: 40px;
+  display: block;
+  margin-bottom: 12px;
+}
+
+.upload-box p {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.upload-box small {
+  color: #8899aa;
+  font-size: 12px;
+}
+
+/* == PDF ESTADO == */
+#pdf-estado {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.pdf-ok {
+  background: #052e16;
+  border: 1px solid #22c55e;
+  color: #22c55e;
+}
+
+.pdf-error {
+  background: #1c0a00;
+  border: 1px solid #f97316;
+  color: #f97316;
+}
+
+/* == GENERAR CV == */
+.generar-form {
+  background: #111f3a;
+  border: 1px solid #1e3a6e;
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.btn-secundario {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  background: #1e1060;
+  border: 2px solid #7c3aed;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#cv-generado-preview {
+  margin-top: 14px;
+  background: #0a1628;
+  border: 1px solid #1e3a6e;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  display: none;
+}
+
 /* == BOTONES == */
 .btn-principal {
   width: 100%;
@@ -185,7 +323,6 @@ textarea:focus {
   font-size: 17px;
   font-weight: 700;
   cursor: pointer;
-  letter-spacing: 0.3px;
 }
 
 .btn-principal:active {
@@ -218,7 +355,6 @@ textarea:focus {
   padding: 16px;
   margin-bottom: 14px;
   cursor: pointer;
-  transition: border-color 0.2s;
 }
 
 .empleo-card:active {
@@ -347,14 +483,12 @@ textarea:focus {
   color: #22c55e;
   font-size: 14px;
   margin-bottom: 8px;
-  padding-left: 4px;
 }
 
 .warn-item {
   color: #f97316;
   font-size: 14px;
   margin-bottom: 8px;
-  padding-left: 4px;
 }
 
 .resumen-texto {
@@ -469,4 +603,4 @@ textarea:focus {
 .empty-state .icono {
   font-size: 48px;
   margin-bottom: 16px;
-}
+  }
