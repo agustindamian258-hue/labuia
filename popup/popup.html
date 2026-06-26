@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LabuIA</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <div class="header">
+    <h1>Labu<span>IA</span></h1>
+    <p class="subtitle">Tu asistente de empleo inteligente</p>
+  </div>
+
+  <div class="section" id="seccion-busqueda">
+    <label>¿Qué puesto buscás?</label>
+    <input type="text" id="puesto" placeholder="Ej: Desarrollador React, Diseñador UX...">
+
+    <label>¿Modalidad?</label>
+    <div class="toggles">
+      <button class="toggle activo" data-valor="remoto">Remoto</button>
+      <button class="toggle" data-valor="presencial">Presencial</button>
+      <button class="toggle" data-valor="hibrido">Híbrido</button>
+    </div>
+
+    <label>¿En qué ciudad?</label>
+    <input type="text" id="ciudad" placeholder="Ej: Buenos Aires, Córdoba...">
+
+    <button class="btn-principal" id="btn-buscar">
+      🔍 Buscar empleos
+    </button>
+  </div>
+
+  <div class="section oculto" id="seccion-resultados">
+    <div class="resultados-header">
+      <span id="cantidad-resultados">0 empleos encontrados</span>
+      <button class="btn-volver" id="btn-volver">← Volver</button>
+    </div>
+    <div id="lista-empleos"></div>
+  </div>
+
+  <div class="section oculto" id="seccion-detalle">
+    <button class="btn-volver" id="btn-volver-lista">← Volver a lista</button>
+    <div id="detalle-empleo"></div>
+  </div>
+
+  <div class="nav-bottom">
+    <button class="nav-item activo" id="nav-buscar">
+      <span>🔍</span>
+      <small>Buscar</small>
+    </button>
+    <button class="nav-item" id="nav-cv">
+      <span>📄</span>
+      <small>Mi CV</small>
+    </button>
+    <button class="nav-item" id="nav-postulaciones">
+      <span>💼</span>
+      <small>Postulaciones</small>
+    </button>
+    <button class="nav-item" id="nav-perfil">
+      <span>👤</span>
+      <small>Perfil</small>
+    </button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
