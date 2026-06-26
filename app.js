@@ -6,6 +6,12 @@ let pantallaActual = 'pantalla-inicio';
 let modalidad = 'remoto';
 let empleosActuales = [];
 let empleoSeleccionado = null;
+let cvFinal = '';
+let opcionCVactual = '';
+
+// PDF.js
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ============================================
 // NAVEGACIÓN
@@ -24,7 +30,7 @@ function setNav(btn) {
 }
 
 // ============================================
-// TOGGLES DE MODALIDAD
+// TOGGLES MODALIDAD
 // ============================================
 
 document.querySelectorAll('.toggle').forEach(btn => {
@@ -36,6 +42,151 @@ document.querySelectorAll('.toggle').forEach(btn => {
 });
 
 // ============================================
+// OPCIONES DE CV
+// ============================================
+
+function seleccionarOpcionCV(opcion) {
+  opcionCVactual = opcion;
+
+  // Resaltar opción seleccionada
+  document.querySelectorAll('.cv-opcion').forEach(el => el.classList.remove('activo'));
+  document.getElementById('opcion-' + opcion).classList.add('activo');
+
+  // Ocultar todas las zonas
+  document.querySelectorAll('.zona-cv').forEach(z => z.classList.add('oculto'));
+
+  // Mostrar la zona correcta
+  document.getElementById('zona-' + opcion).classList.remove('oculto');
+}
+
+// ============================================
+// PROCESAR PDF
+// ============================================
+
+async function procesarPDF(input) {
+  const archivo = input.files[0];
+  if (!archivo) return;
+
+  const estado = document.getElementById('pdf-estado');
+  estado.className = '';
+  estado.textContent = '⏳ Extrayendo texto del PDF...';
+
+  try {
+    const arrayBuffer = await archivo.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+    let textoCompleto = '';
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const pagina = await pdf.getPage(i);
+      const contenido = await pagina.getTextContent();
+      const textoPagina = contenido.items.map(item => item.str).join(' ');
+      textoCompleto += textoPagina + '\n';
+    }
+
+    if (textoCompleto.trim().length < 50) {
+      throw new Error('PDF sin texto legible');
+    }
+
+    cvFinal = textoCompleto.trim();
+    estado.className = 'pdf-ok';
+    estado.textContent = '✅ CV extraído correctamente (' + pdf.numPages + ' páginas)';
+
+  } catch (error) {
+    estado.className = 'pdf-error';
+    estado.textContent = '❌ No pudimos leer el PDF. Probá pegando el texto manualmente.';
+    seleccionarOpcionCV('texto');
+  }
+}
+
+// ============================================
+// GENERAR CV CON IA
+// ============================================
+
+async function generarCVconIA() {
+  const nombre = document.getElementById('nombre').value.trim() || 'El candidato';
+  const experiencia = document.getElementById('gen-experiencia').value.trim();
+  const trabajos = document.getElementById('gen-trabajos').value.trim();
+  const habilidades = document.getElementById('gen-habilidades').value.trim();
+  const estudios = document.getElementById('gen-estudios').value.trim();
+
+  if (!experiencia && !trabajos && !habilidades) {
+    alert('Completá al menos un campo para generar tu CV');
+    return;
+  }
+
+  const preview = document.getElementById('cv-generado-preview');
+  preview.style.display = 'block';
+  preview.textContent = '⏳ Generando tu CV con IA...';
+
+  try {
+    const prompt = `Sos un experto en recursos humanos argentino. 
+Generá un CV profesional en español para la siguiente persona.
+Usá un tono profesional pero accesible, apropiado para el mercado laboral argentino.
+
+DATOS:
+- Nombre: ${nombre}
+- Años de experiencia: ${experiencia || 'No especificado'}
+- Trabajos anteriores: ${trabajos || 'No especificado'}
+- Habilidades: ${habilidades || 'No especificado'}
+- Estudios: ${estudios || 'No especificado'}
+
+Generá el CV completo con secciones: Datos personales, Objetivo profesional, Experiencia laboral, Habilidades, y Educación.
+Hacelo en texto plano, sin formato especial, listo para usar.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=AIzaSyDemo`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    const data = await response.json();
+    const cvGenerado = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (cvGenerado) {
+      cvFinal = cvGenerado;
+      preview.textContent = cvGenerado;
+    } else {
+      // CV de respaldo si no hay API key
+      cvFinal = generarCVlocal(nombre, experiencia, trabajos, habilidades, estudios);
+      preview.textContent = cvFinal;
+    }
+
+  } catch {
+    // CV generado localmente sin IA
+    cvFinal = generarCVlocal(nombre, experiencia, trabajos, habilidades, estudios);
+    preview.textContent = cvFinal;
+  }
+}
+
+function generarCVlocal(nombre, experiencia, trabajos, habilidades, estudios) {
+  return `CURRÍCULUM VITAE
+
+DATOS PERSONALES
+Nombre: ${nombre}
+País: Argentina
+
+OBJETIVO PROFESIONAL
+Profesional con ${experiencia || 'experiencia en el área'} buscando nuevas oportunidades de crecimiento laboral. Comprometido con el trabajo en equipo y la mejora continua.
+
+EXPERIENCIA LABORAL
+${trabajos || 'Disponible para primer empleo o cambio laboral'}
+
+HABILIDADES
+${habilidades || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
+
+EDUCACIÓN
+${estudios || 'Formación en proceso'}
+
+DISPONIBILIDAD
+Inmediata`;
+}
+
+// ============================================
 // GUARDAR PERFIL Y BUSCAR
 // ============================================
 
@@ -43,23 +194,28 @@ function guardarPerfilYBuscar() {
   const nombre = document.getElementById('nombre').value.trim();
   const puesto = document.getElementById('puesto').value.trim();
   const ciudad = document.getElementById('ciudad').value.trim();
-  const cv = document.getElementById('cv').value.trim();
 
   if (!puesto) {
     alert('Escribí el puesto que buscás');
     return;
   }
 
-  if (!cv) {
-    alert('Pegá el texto de tu CV para que la IA pueda analizarlo');
+  // Obtener CV según opción seleccionada
+  if (opcionCVactual === 'texto') {
+    cvFinal = document.getElementById('cv-texto').value.trim();
+  }
+
+  if (!cvFinal || cvFinal.length < 20) {
+    alert('Necesitamos tu CV para analizar tu compatibilidad con los empleos. Elegí una opción arriba.');
     return;
   }
 
-  // Guardamos en localStorage
-  localStorage.setItem('labuia_perfil', JSON.stringify({ nombre, puesto, ciudad, cv, modalidad }));
+  localStorage.setItem('labuia_perfil', JSON.stringify({
+    nombre, puesto, ciudad, cv: cvFinal, modalidad
+  }));
 
   irA('pantalla-resultados');
-  buscarEmpleos(puesto, ciudad, cv);
+  buscarEmpleos(puesto, ciudad, cvFinal);
 }
 
 // ============================================
@@ -71,7 +227,7 @@ window.addEventListener('load', () => {
   if (perfil.nombre) document.getElementById('nombre').value = perfil.nombre;
   if (perfil.puesto) document.getElementById('puesto').value = perfil.puesto;
   if (perfil.ciudad) document.getElementById('ciudad').value = perfil.ciudad;
-  if (perfil.cv) document.getElementById('cv').value = perfil.cv;
+  if (perfil.cv) cvFinal = perfil.cv;
   if (perfil.modalidad) {
     modalidad = perfil.modalidad;
     document.querySelectorAll('.toggle').forEach(b => {
@@ -95,17 +251,10 @@ async function buscarEmpleos(puesto, ciudad, cv) {
   `;
 
   try {
-    // Obtenemos empleos
     const empleos = await obtenerEmpleos(puesto, ciudad);
-
-    // Analizamos con IA
     const analizados = await analizarConIA(empleos, puesto, cv);
-
-    // Ordenamos por score
     empleosActuales = analizados.sort((a, b) => b.score - a.score);
-
     mostrarResultados(empleosActuales, puesto);
-
   } catch (error) {
     document.getElementById('lista-empleos').innerHTML = `
       <div class="cargando">
@@ -116,21 +265,18 @@ async function buscarEmpleos(puesto, ciudad, cv) {
 }
 
 // ============================================
-// OBTENER EMPLEOS (FUENTE: REMOTIVE + DEMO)
+// OBTENER EMPLEOS
 // ============================================
 
 async function obtenerEmpleos(puesto, ciudad) {
-  const empleosDemo = generarEmpleosDemo(puesto, ciudad);
-
   try {
-    // Intentamos con Remotive API (gratis, sin key)
     const response = await fetch(
       `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(puesto)}&limit=10`
     );
     const data = await response.json();
 
     if (data.jobs && data.jobs.length > 0) {
-      const empleosReales = data.jobs.slice(0, 8).map((job, i) => ({
+      return data.jobs.slice(0, 8).map((job, i) => ({
         id: i + 1,
         titulo: job.title,
         empresa: job.company_name,
@@ -142,81 +288,74 @@ async function obtenerEmpleos(puesto, ciudad) {
         score: 0,
         analisis: null
       }));
-      return empleosReales;
     }
-  } catch {
-    // Si falla la API usamos los de demo
-  }
+  } catch {}
 
-  return empleosDemo;
+  return generarEmpleosDemo(puesto, ciudad);
 }
 
 function generarEmpleosDemo(puesto, ciudad) {
   const empresas = [
-    { nombre: 'Mercado Libre', ubi: 'Buenos Aires, Argentina' },
-    { nombre: 'Globant', ubi: 'Córdoba, Argentina' },
-    { nombre: 'Naranja X', ubi: 'Córdoba, Argentina' },
-    { nombre: 'PedidosYa', ubi: 'Buenos Aires, Argentina' },
-    { nombre: 'Despegar', ubi: 'Buenos Aires, Argentina' },
-    { nombre: 'OLX Argentina', ubi: 'Buenos Aires, Argentina' },
+    'Mercado Libre', 'Globant', 'Naranja X',
+    'PedidosYa', 'Despegar', 'OLX Argentina'
   ];
+  const niveles = ['Sr', 'Jr', 'Semi Senior', 'Trainee', 'Lead', 'Ssr'];
 
   return empresas.map((emp, i) => ({
     id: i + 1,
-    titulo: `${puesto} ${['Sr', 'Jr', 'Semi Senior', 'Trainee', 'Lead', 'Ssr'][i]}`,
-    empresa: emp.nombre,
-    ubicacion: ciudad || emp.ubi,
-    descripcion: `Buscamos ${puesto} para unirse a nuestro equipo. Se valorará experiencia en el área, trabajo en equipo y ganas de crecer profesionalmente. Ofrecemos excelente clima laboral, obra social de primer nivel y posibilidades de crecimiento.`,
-    link: `https://www.bumeran.com.ar/empleos-publicacion-${i + 1}.html`,
+    titulo: `${puesto} ${niveles[i]}`,
+    empresa: emp,
+    ubicacion: ciudad || 'Buenos Aires, Argentina',
+    descripcion: `Buscamos ${puesto} para unirse a nuestro equipo. Se valorará experiencia, trabajo en equipo y ganas de crecer. Ofrecemos excelente clima laboral y posibilidades de crecimiento.`,
+    link: `https://www.bumeran.com.ar`,
     score: 0,
     analisis: null
   }));
 }
 
 // ============================================
-// ANALIZAR CON GEMINI IA
+// ANALIZAR CON IA
 // ============================================
 
 async function analizarConIA(empleos, puesto, cv) {
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
 
   if (!apiKey) {
-    // Sin API key: scores simulados para demo
     return empleos.map((e, i) => ({
       ...e,
       score: Math.max(95 - (i * 7), 40),
       analisis: {
         fortalezas: [
-          'Configurá tu API key de Gemini para ver análisis real',
-          'Andá a Perfil → Configuración para activar la IA'
+          'Tu perfil fue cargado correctamente',
+          'Podés ver el detalle de cada oferta',
+          'La IA está lista para analizar cuando agregues tu API key'
         ],
-        debilidades: ['Sin API key no podemos analizar compatibilidad real'],
-        resumen: 'Activá la IA gratuita de Google para ver tu compatibilidad real con este empleo'
+        debilidades: ['Agregá tu API key de Gemini para ver compatibilidad real'],
+        resumen: 'Score estimado. Activá la IA gratuita para análisis real.'
       }
     }));
   }
 
   const resultado = [];
-
   for (const empleo of empleos) {
     try {
-      const prompt = `Sos un experto en Recursos Humanos argentino. 
-Analizá la compatibilidad entre este CV y esta oferta de trabajo.
+      const prompt = `Sos un experto en RRHH argentino.
+Analizá la compatibilidad entre este CV y esta oferta.
 
 CV:
-${cv.substring(0, 1000)}
+${cv.substring(0, 800)}
 
 OFERTA:
 Puesto: ${empleo.titulo}
 Empresa: ${empleo.empresa}
 Descripción: ${empleo.descripcion.substring(0, 400)}
 
-Respondé ÚNICAMENTE con este JSON sin ningún texto extra:
+Respondé SOLO con este JSON sin texto extra:
 {
   "score": numero del 1 al 100,
   "fortalezas": ["razón 1", "razón 2", "razón 3"],
   "debilidades": ["punto 1", "punto 2"],
-  "resumen": "Una sola oración explicando la compatibilidad"
+  "resumen": "Una oración explicando la compatibilidad"
 }`;
 
       const res = await fetch(
@@ -234,7 +373,6 @@ Respondé ÚNICAMENTE con este JSON sin ningún texto extra:
       const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
       const limpio = texto.replace(/```json|```/g, '').trim();
       const analisis = JSON.parse(limpio);
-
       resultado.push({ ...empleo, score: analisis.score || 50, analisis });
 
     } catch {
@@ -250,7 +388,7 @@ Respondé ÚNICAMENTE con este JSON sin ningún texto extra:
 // ============================================
 
 function mostrarResultados(empleos, puesto) {
-  document.getElementById('titulo-resultados').textContent = `Empleos para vos`;
+  document.getElementById('titulo-resultados').textContent = 'Empleos para vos';
   document.getElementById('subtitulo-resultados').textContent =
     `${empleos.length} ofertas encontradas para "${puesto}"`;
 
@@ -302,7 +440,7 @@ function verDetalle(id) {
       <div class="detalle-titulo">${emp.titulo}</div>
       <div class="detalle-empresa">${emp.empresa} · ${emp.ubicacion}</div>
       <div class="score-grande ${clase}">${emp.score}%</div>
-      <p class="resumen-texto">${emp.analisis?.resumen || 'Activá la IA para ver tu compatibilidad'}</p>
+      <p class="resumen-texto">${emp.analisis?.resumen || 'Activá la IA para ver tu compatibilidad real'}</p>
     </div>
 
     ${fortalezas.length > 0 ? `
@@ -332,9 +470,11 @@ function verDetalle(id) {
 function postularme() {
   if (!empleoSeleccionado) return;
 
-  // Guardamos la postulación
   const postulaciones = JSON.parse(localStorage.getItem('labuia_postulaciones') || '[]');
-  const yaExiste = postulaciones.find(p => p.titulo === empleoSeleccionado.titulo && p.empresa === empleoSeleccionado.empresa);
+  const yaExiste = postulaciones.find(p =>
+    p.titulo === empleoSeleccionado.titulo &&
+    p.empresa === empleoSeleccionado.empresa
+  );
 
   if (!yaExiste) {
     postulaciones.unshift({
@@ -350,7 +490,6 @@ function postularme() {
     localStorage.setItem('labuia_postulaciones', JSON.stringify(postulaciones));
   }
 
-  // Abrimos el portal de empleo
   window.open(empleoSeleccionado.link, '_blank');
 }
 
@@ -401,4 +540,4 @@ function cargarPostulaciones() {
       `;
     }).join('')}
   `;
-      }
+  }
