@@ -14,17 +14,16 @@
     <div class="login-contenido">
       <div class="logo-grande">Labu<span>IA</span></div>
       <p class="tagline">Tu asistente de empleo inteligente</p>
-      <div class="features">
-        <div class="feature-item">🔍 Busca empleos reales en Argentina</div>
-        <div class="feature-item">🤖 La IA analiza tu compatibilidad</div>
-        <div class="feature-item">📄 Adapta tu CV a cada puesto</div>
-        <div class="feature-item">💼 Te ayuda a postularte</div>
-      </div>
       <button class="btn-google" onclick="loginConGoogle()">
         <img src="https://www.google.com/favicon.ico" width="20" height="20">
         Entrar con Google
       </button>
-      <p class="login-info">Es gratis. Tus datos están seguros.</p>
+      <p class="login-info">
+        Al continuar aceptás nuestros
+        <a href="#terminos" style="color:#7c3aed">Términos y Condiciones</a>
+        y la
+        <a href="#privacidad" style="color:#7c3aed">Política de Privacidad</a>
+      </p>
     </div>
   </div>
 
@@ -151,12 +150,11 @@
       </div>
 
       <div id="zona-generar" class="zona-cv oculto">
-        <p class="api-key-info">La IA va a generar tu CV automáticamente con los datos que completaste arriba.</p>
+        <p class="api-key-info">La IA va a generar tu CV con los datos que completaste arriba.</p>
         <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
         <div id="cv-generado-preview"></div>
       </div>
 
-      <!-- API KEY -->
       <div class="api-key-box">
         <div class="api-key-header" onclick="toggleAPIkey()">
           <span>⚙️ Activar IA real (Gemini)</span>
