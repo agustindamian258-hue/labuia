@@ -53,11 +53,11 @@ function guardarAPIkey() {
   const key = document.getElementById('gemini-key').value.trim();
   const estado = document.getElementById('api-key-estado');
 
-  if (!key || !key.startsWith('AIza')) {
+  if (!key || key.length < 10) {
     estado.style.background = '#1c0a00';
     estado.style.color = '#f97316';
     estado.style.border = '1px solid #f97316';
-    estado.textContent = '❌ API Key inválida. Debe empezar con AIza';
+    estado.textContent = '❌ API Key inválida. Verificá que esté completa';
     return;
   }
 
@@ -117,6 +117,36 @@ async function procesarPDF(input) {
 }
 
 // ============================================
+// LLAMADA A GEMINI (soporta AIza y AQ.)
+// ============================================
+
+async function llamarGemini(prompt, apiKey) {
+  // Intentamos con el endpoint nuevo primero (soporta ambos tipos de key)
+  const endpoints = [
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`
+  ];
+
+  for (const url of endpoints) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      });
+
+      const data = await res.json();
+      const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (texto) return texto;
+    } catch {}
+  }
+
+  return null;
+}
+
+// ============================================
 // GENERAR CV CON IA
 // ============================================
 
@@ -139,8 +169,7 @@ async function generarCVconIA() {
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
 
   if (apiKey) {
-    try {
-      const prompt = `Sos un experto en recursos humanos argentino.
+    const prompt = `Sos un experto en recursos humanos argentino.
 Generá un CV profesional en español para esta persona.
 
 DATOS:
@@ -155,27 +184,16 @@ DATOS PERSONALES, OBJETIVO PROFESIONAL, EXPERIENCIA LABORAL, HABILIDADES, EDUCAC
 
 Escribilo en texto plano, sin asteriscos ni símbolos raros. Hacelo profesional y adaptado al mercado laboral argentino.`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
+    const cvGenerado = await llamarGemini(prompt, apiKey);
 
-      const data = await res.json();
-      const cvGenerado = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-      if (cvGenerado) {
-        cvFinal = cvGenerado;
-        preview.textContent = cvGenerado;
-        return;
-      }
-    } catch {}
+    if (cvGenerado) {
+      cvFinal = cvGenerado;
+      preview.textContent = cvGenerado;
+      return;
+    }
   }
 
-  // Sin API key o si falla: CV local
+  // Sin API key o si falla: CV generado localmente
   cvFinal = `CURRÍCULUM VITAE
 
 DATOS PERSONALES
@@ -316,7 +334,7 @@ function generarEmpleosDemo(puesto, ciudad) {
     titulo: `${puesto} ${niveles[i]}`,
     empresa: emp,
     ubicacion: ciudad || 'Buenos Aires, Argentina',
-    descripcion: `Buscamos ${puesto} para unirse a nuestro equipo. Se valorará experiencia, trabajo en equipo y ganas de crecer. Ofrecemos excelente clima laboral y posibilidades de crecimiento.`,
+    descripcion: `Buscamos ${puesto} para unirse a nuestro equipo. Se valorará experiencia, trabajo en equipo y ganas de crecer.`,
     link: 'https://www.bumeran.com.ar',
     score: 0,
     analisis: null
@@ -368,20 +386,13 @@ Respondé ÚNICAMENTE con este JSON sin texto extra:
   "resumen": "Una oración corta explicando la compatibilidad"
 }`;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        }
-      );
-
-      const data = await res.json();
-      const texto = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-      const analisis = JSON.parse(texto.replace(/```json|```/g, '').trim());
-      resultado.push({ ...empleo, score: analisis.score || 50, analisis });
-
+      const texto = await llamarGemini(prompt, apiKey);
+      if (texto) {
+        const analisis = JSON.parse(texto.replace(/```json|```/g, '').trim());
+        resultado.push({ ...empleo, score: analisis.score || 50, analisis });
+      } else {
+        resultado.push({ ...empleo, score: 50, analisis: null });
+      }
     } catch {
       resultado.push({ ...empleo, score: 50, analisis: null });
     }
@@ -534,4 +545,4 @@ function cargarPostulaciones() {
       `;
     }).join('')}
   `;
-                                           }
+    }
