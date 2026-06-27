@@ -9,133 +9,174 @@
 </head>
 <body>
 
-  <!-- PANTALLA 1: BIENVENIDA -->
-  <div class="pantalla activa" id="pantalla-inicio">
-    <div class="inicio-contenido">
+  <!-- PANTALLA LOGIN -->
+  <div class="pantalla activa" id="pantalla-login">
+    <div class="login-contenido">
       <div class="logo-grande">Labu<span>IA</span></div>
       <p class="tagline">Tu asistente de empleo inteligente</p>
       <div class="features">
-        <div class="feature-item">🔍 Busca empleos en Argentina</div>
+        <div class="feature-item">🔍 Busca empleos reales en Argentina</div>
         <div class="feature-item">🤖 La IA analiza tu compatibilidad</div>
+        <div class="feature-item">📄 Adapta tu CV a cada puesto</div>
         <div class="feature-item">💼 Te ayuda a postularte</div>
       </div>
-      <button class="btn-principal" onclick="irA('pantalla-perfil')">
-        Empezar gratis
+      <button class="btn-google" onclick="loginConGoogle()">
+        <img src="https://www.google.com/favicon.ico" width="20" height="20">
+        Entrar con Google
       </button>
+      <p class="login-info">Es gratis. Tus datos están seguros.</p>
     </div>
   </div>
 
-  <!-- PANTALLA 2: MI PERFIL / CV -->
+  <!-- PANTALLA PERFIL -->
   <div class="pantalla" id="pantalla-perfil">
     <div class="header-app">
       <h1>Labu<span>IA</span></h1>
-      <button class="btn-icono" onclick="irA('pantalla-inicio')">✕</button>
+      <div class="usuario-info">
+        <img id="usuario-foto" src="" width="32" height="32" style="border-radius:50%;display:none">
+        <button class="btn-icono" onclick="cerrarSesion()">Salir</button>
+      </div>
     </div>
     <div class="contenido">
       <h2>Tu perfil</h2>
       <p class="subtitulo">Completá tus datos para encontrar los mejores empleos</p>
 
-      <label>Tu nombre</label>
+      <label>Tu nombre completo</label>
       <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
 
-      <label>¿Qué puesto buscás?</label>
-      <input type="text" id="puesto" placeholder="Ej: Operario, Diseñador, Contador...">
+      <label>¿Cuántos años tenés?</label>
+      <input type="number" id="edad" placeholder="Ej: 25" min="14" max="99">
 
-      <label>¿En qué ciudad?</label>
-      <input type="text" id="ciudad" placeholder="Ej: Buenos Aires, Córdoba...">
+      <label>¿En qué barrio o ciudad vivís?</label>
+      <input type="text" id="ciudad" placeholder="Ej: José C. Paz, Zona Norte GBA">
+
+      <label>¿Hasta dónde podés viajar?</label>
+      <div class="toggles">
+        <button class="toggle activo" data-valor="zona">Mi zona</button>
+        <button class="toggle" data-valor="amba">Todo AMBA</button>
+        <button class="toggle" data-valor="cualquier">Cualquier lugar</button>
+      </div>
+
+      <label>Nivel de estudios</label>
+      <select id="estudios">
+        <option value="">Seleccioná...</option>
+        <option value="primario">Primario completo</option>
+        <option value="secundario_inc">Secundario incompleto</option>
+        <option value="secundario">Secundario completo</option>
+        <option value="terciario">Terciario/Universitario</option>
+        <option value="universitario">Universitario completo</option>
+      </select>
+
+      <label>¿Tenés experiencia laboral?</label>
+      <div class="toggles">
+        <button class="toggle activo" data-valor="sin_exp" data-grupo="experiencia">Sin experiencia</button>
+        <button class="toggle" data-valor="poca_exp" data-grupo="experiencia">Poca (1-2 años)</button>
+        <button class="toggle" data-valor="media_exp" data-grupo="experiencia">Media (3-5 años)</button>
+        <button class="toggle" data-valor="mucha_exp" data-grupo="experiencia">Mucha (+5 años)</button>
+      </div>
+
+      <div id="zona-experiencia-detalle" class="oculto">
+        <label>¿En qué trabajaste antes?</label>
+        <input type="text" id="experiencia-detalle" placeholder="Ej: Repositor en supermercado, operario textil...">
+      </div>
+
+      <label>¿Qué tipo de trabajo buscás?</label>
+      <input type="text" id="puesto-buscado" placeholder="Ej: Operario, repositor, cajero, cualquier cosa...">
 
       <label>Modalidad</label>
       <div class="toggles">
-        <button class="toggle activo" data-valor="remoto">Remoto</button>
-        <button class="toggle" data-valor="presencial">Presencial</button>
-        <button class="toggle" data-valor="hibrido">Híbrido</button>
+        <button class="toggle activo" data-valor="presencial" data-grupo="modalidad">Presencial</button>
+        <button class="toggle" data-valor="remoto" data-grupo="modalidad">Remoto</button>
+        <button class="toggle" data-valor="hibrido" data-grupo="modalidad">Híbrido</button>
       </div>
 
-      <label>Tu CV</label>
+      <label>Disponibilidad horaria</label>
+      <div class="toggles-wrap">
+        <button class="toggle-check" data-valor="manana">☀️ Mañana</button>
+        <button class="toggle-check" data-valor="tarde">🌤️ Tarde</button>
+        <button class="toggle-check" data-valor="noche">🌙 Noche</button>
+        <button class="toggle-check" data-valor="rotativo">🔄 Rotativo</button>
+        <button class="toggle-check activo" data-valor="cualquier_horario">✅ Cualquier horario</button>
+      </div>
+
+      <label>Habilidades y certificaciones</label>
+      <div class="toggles-wrap">
+        <button class="toggle-check" data-valor="licencia_auto">🚗 Registro auto</button>
+        <button class="toggle-check" data-valor="licencia_moto">🏍️ Registro moto</button>
+        <button class="toggle-check" data-valor="carretilla">🏗️ Carretilla</button>
+        <button class="toggle-check" data-valor="manejo_pc">💻 Manejo de PC</button>
+        <button class="toggle-check" data-valor="ingles">🇺🇸 Inglés</button>
+        <button class="toggle-check" data-valor="atencion_cliente">🤝 Atención al cliente</button>
+      </div>
+
+      <label>Pretensión salarial (opcional)</label>
+      <input type="text" id="salario" placeholder="Ej: $500.000, lo que sea, a convenir...">
+
+      <label>Tu CV (opcional pero recomendado)</label>
       <div class="cv-opciones">
         <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
           <span class="cv-opcion-icono">📄</span>
           <div>
-            <div class="cv-opcion-titulo">Subir mi CV en PDF</div>
-            <div class="cv-opcion-sub">La app extrae el texto automáticamente</div>
+            <div class="cv-opcion-titulo">Subir PDF</div>
+            <div class="cv-opcion-sub">La app extrae el texto</div>
           </div>
         </div>
         <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
           <span class="cv-opcion-icono">✏️</span>
           <div>
-            <div class="cv-opcion-titulo">Pegar texto de mi CV</div>
-            <div class="cv-opcion-sub">Copiá y pegá tu CV directamente</div>
+            <div class="cv-opcion-titulo">Pegar texto</div>
+            <div class="cv-opcion-sub">Copiá y pegá tu CV</div>
           </div>
         </div>
         <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
           <span class="cv-opcion-icono">🤖</span>
           <div>
-            <div class="cv-opcion-titulo">No tengo CV, que lo haga la IA</div>
-            <div class="cv-opcion-sub">Completás tus datos y la IA lo genera</div>
+            <div class="cv-opcion-titulo">No tengo CV</div>
+            <div class="cv-opcion-sub">La IA lo genera por vos</div>
           </div>
         </div>
       </div>
 
-      <!-- ZONA PDF -->
       <div id="zona-pdf" class="zona-cv oculto">
         <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
           <span class="upload-icono">📁</span>
           <p>Tocá para seleccionar tu PDF</p>
-          <small>Solo archivos .pdf</small>
         </div>
         <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
         <div id="pdf-estado"></div>
       </div>
 
-      <!-- ZONA TEXTO -->
       <div id="zona-texto" class="zona-cv oculto">
         <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
       </div>
 
-      <!-- ZONA GENERAR -->
       <div id="zona-generar" class="zona-cv oculto">
-        <div class="generar-form">
-          <label>¿Cuántos años de experiencia tenés?</label>
-          <input type="text" id="gen-experiencia" placeholder="Ej: 2 años, Sin experiencia...">
-          <label>¿En qué trabajaste antes?</label>
-          <input type="text" id="gen-trabajos" placeholder="Ej: Repositor, operario textil...">
-          <label>¿Qué habilidades tenés?</label>
-          <input type="text" id="gen-habilidades" placeholder="Ej: Licencia de conducir, manejo de PC...">
-          <label>Estudios</label>
-          <input type="text" id="gen-estudios" placeholder="Ej: Secundario completo...">
-          <button class="btn-secundario" onclick="generarCVconIA()">
-            🤖 Generar mi CV con IA
-          </button>
-          <div id="cv-generado-preview"></div>
-        </div>
+        <p class="api-key-info">La IA va a generar tu CV automáticamente con los datos que completaste arriba.</p>
+        <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
+        <div id="cv-generado-preview"></div>
       </div>
 
-      <!-- CONFIGURACIÓN IA -->
+      <!-- API KEY -->
       <div class="api-key-box">
         <div class="api-key-header" onclick="toggleAPIkey()">
-          <span>⚙️ Configuración de IA</span>
+          <span>⚙️ Activar IA real (Gemini)</span>
           <span id="api-key-arrow">▼</span>
         </div>
         <div id="api-key-zona" class="oculto">
-          <p class="api-key-info">
-            Pegá tu API Key de Gemini para activar análisis real con IA.
-            Es completamente gratis en aistudio.google.com
-          </p>
-          <input type="password" id="gemini-key" placeholder="AIza...">
-          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">
-            💾 Guardar API Key
-          </button>
+          <p class="api-key-info">Pegá tu API Key de aistudio.google.com para activar análisis real con IA.</p>
+          <input type="password" id="gemini-key" placeholder="Tu API Key de Gemini...">
+          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">💾 Guardar</button>
           <div id="api-key-estado"></div>
         </div>
       </div>
 
       <button class="btn-principal" onclick="guardarPerfilYBuscar()">
-        🔍 Buscar empleos
+        🔍 Buscar mis empleos
       </button>
     </div>
   </div>
 
-  <!-- PANTALLA 3: RESULTADOS -->
+  <!-- PANTALLA RESULTADOS -->
   <div class="pantalla" id="pantalla-resultados">
     <div class="header-app">
       <button class="btn-volver" onclick="irA('pantalla-perfil')">← Volver</button>
@@ -149,7 +190,7 @@
     </div>
   </div>
 
-  <!-- PANTALLA 4: DETALLE EMPLEO -->
+  <!-- PANTALLA DETALLE -->
   <div class="pantalla" id="pantalla-detalle">
     <div class="header-app">
       <button class="btn-volver" onclick="irA('pantalla-resultados')">← Volver</button>
@@ -159,7 +200,27 @@
     <div class="contenido" id="contenido-detalle"></div>
   </div>
 
-  <!-- PANTALLA 5: POSTULACIONES -->
+  <!-- PANTALLA CV ADAPTADO -->
+  <div class="pantalla" id="pantalla-cv-adaptado">
+    <div class="header-app">
+      <button class="btn-volver" onclick="irA('pantalla-detalle')">← Volver</button>
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido">
+      <h2>Tu CV adaptado</h2>
+      <p class="subtitulo" id="subtitulo-cv-adaptado">Optimizado para este puesto</p>
+      <div id="cv-adaptado-contenido"></div>
+      <button class="btn-secundario" onclick="copiarCV()" style="margin-top:16px">
+        📋 Copiar CV
+      </button>
+      <button class="btn-principal" onclick="postularmeConCV()">
+        💼 Postularme ahora
+      </button>
+    </div>
+  </div>
+
+  <!-- PANTALLA POSTULACIONES -->
   <div class="pantalla" id="pantalla-postulaciones">
     <div class="header-app">
       <h1>Labu<span>IA</span></h1>
@@ -172,7 +233,7 @@
   </div>
 
   <!-- NAVBAR -->
-  <nav class="navbar">
+  <nav class="navbar" id="navbar" style="display:none">
     <button class="nav-item activo" onclick="irA('pantalla-perfil'); setNav(this)">
       <span>🔍</span><small>Buscar</small>
     </button>
@@ -181,6 +242,6 @@
     </button>
   </nav>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
