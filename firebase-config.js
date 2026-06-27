@@ -1,5 +1,5 @@
-// Configuración de Firebase para LabuIA
-import { initializeApp } = "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+// Importamos Firebase desde CDN
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
