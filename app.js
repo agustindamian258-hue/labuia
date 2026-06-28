@@ -863,7 +863,7 @@ function verDetalle(id) {
 
 window.verDetalle = verDetalle;
 
-// ============================================
+// ==// ============================================
 // ADAPTAR CV AL PUESTO CON IA
 // ============================================
 
@@ -876,110 +876,124 @@ async function adaptarCV() {
   document.getElementById('cv-adaptado-contenido').innerHTML = `
     <div class="cargando">
       <span class="spinner">⚙️</span>
-      La IA está adaptando tu CV...
+      La IA está generando tu CV profesional...
     </div>
   `;
 
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
   const emp = empleoSeleccionado;
-  const perfilTexto = construirPerfilTexto();
   const esGrande = emp.esEmpresaGrande;
 
-  const prompt = `Sos un experto en recursos humanos argentino y especialista en redacción de CVs profesionales.
-Adaptá el CV de esta persona específicamente para este puesto.
+  // Construir perfil completo
+  const nombre = perfil.nombre || '';
+  const celular = perfil.celular || '';
+  const emailC = perfil.emailContacto || '';
+  const ciudad = perfil.ciudad || '';
+  const edad = perfil.edad || '';
+  const estudiosVal = perfil.estudios || '';
+  const institucion = perfil.institucion || '';
+  const expEmpresa = perfil.expEmpresa || '';
+  const expDetalle = perfil.expDetalle || '';
+  const infoExtra = perfil.infoExtra || '';
+  const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
+  const horarioTexto = (perfil.horarios || horarios)
+    .map(h => h === 'cualquier_horario' ? 'Cualquier horario' :
+      h === 'manana' ? 'Turno mañana' :
+      h === 'tarde' ? 'Turno tarde' :
+      h === 'noche' ? 'Turno noche' :
+      h === 'rotativo' ? 'Turno rotativo' : h)
+    .join(', ');
 
-INFORMACIÓN DEL CANDIDATO:
-${perfilTexto}
-${cvFinal ? `CV actual del candidato:\n${cvFinal.substring(0, 600)}` : ''}
+  const expTexto = (perfil.experiencia || experiencia) === 'sin_exp' ? 'Sin experiencia laboral' :
+    (perfil.experiencia || experiencia) === 'poca_exp' ? 'Poca experiencia (1-2 años)' :
+    (perfil.experiencia || experiencia) === 'media_exp' ? 'Experiencia media (3-5 años)' :
+    'Experiencia amplia (+5 años)';
+
+  const estudiosTexto = estudiosVal === 'primario' ? 'Primario completo' :
+    estudiosVal === 'secundario_inc' ? 'Secundario incompleto' :
+    estudiosVal === 'secundario' ? 'Secundario completo' :
+    estudiosVal === 'terciario' ? 'Terciario/Universitario en curso' :
+    estudiosVal === 'universitario' ? 'Universitario completo' : '';
+
+  if (!apiKey) {
+    // Sin IA — CV básico
+    cvAdaptadoTexto = generarCVbasico(emp, nombre, celular, emailC, ciudad,
+      edad, estudiosTexto, institucion, expEmpresa, expDetalle,
+      habilidadesTexto, horarioTexto, expTexto, infoExtra);
+    document.getElementById('cv-adaptado-contenido').innerHTML =
+      `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
+    return;
+  }
+
+  // Determinar formato según empresa
+  const formatoInstruccion = esGrande ?
+    `FORMATO REQUERIDO: ATS/Harvard (empresa grande usa sistemas automáticos de lectura)
+- Una sola columna, texto plano
+- Sin tablas, sin colores, sin íconos
+- Palabras clave del puesto bien visibles
+- Secciones con mayúsculas: DATOS PERSONALES, OBJETIVO PROFESIONAL, EXPERIENCIA LABORAL, HABILIDADES, EDUCACIÓN, DISPONIBILIDAD
+- Fechas en cada trabajo si las tiene` :
+    `FORMATO REQUERIDO: Moderno y visual (empresa mediana/pyme)
+- Lenguaje cálido y cercano
+- Destacar personalidad y actitud además de habilidades
+- Objetivo profesional específico y entusiasta
+- Secciones bien organizadas`;
+
+  const prompt = `Sos un experto en recursos humanos argentino y especialista en redacción de CVs profesionales.
+Tu tarea es generar un CV profesional y competitivo para esta persona.
+
+DATOS DEL CANDIDATO:
+Nombre: ${nombre}
+${edad ? `Edad: ${edad} años` : ''}
+${celular ? `Celular: ${celular}` : ''}
+${emailC ? `Email: ${emailC}` : ''}
+${ciudad ? `Localidad: ${ciudad}` : ''}
+Nivel de experiencia: ${expTexto}
+${expEmpresa ? `Empresa(s) donde trabajó: ${expEmpresa}` : ''}
+${expDetalle ? `Lo que hacía en el trabajo (en sus palabras): "${expDetalle}"` : ''}
+${infoExtra ? `Información adicional que quiere que sepas: "${infoExtra}"` : ''}
+Estudios: ${estudiosTexto}
+${institucion ? `Institución: ${institucion}` : ''}
+Habilidades seleccionadas: ${habilidadesTexto || 'No especificadas'}
+Disponibilidad horaria: ${horarioTexto}
 
 PUESTO AL QUE SE POSTULA:
 Título: ${emp.titulo}
 Empresa: ${emp.empresa}
-Descripción: ${emp.descripcion}
+Descripción del puesto: ${emp.descripcion}
+
+${formatoInstruccion}
 
 INSTRUCCIONES CRÍTICAS:
-${esGrande ? 
-  '- Esta es una EMPRESA GRANDE que usa sistemas ATS de lectura automática de CVs. Usá formato Harvard: texto plano, una columna, sin tablas, sin colores. Las habilidades deben estar como palabras clave que el sistema pueda detectar.' :
-  '- Esta es una empresa mediana/pyme. Podés usar un formato más visual y cálido.'
-}
-- Si el candidato describió sus tareas con palabras simples (ej: "armaba rollos de tela"), transformalas en lenguaje profesional (ej: "Preparación y embalaje de rollos textiles para distribución")
-- Si tiene habilidades como "Manejo de auto-elevador" incluíla aunque haya sido por poco tiempo como: "Manejo de autoelevador/Clark (conocimiento práctico)"
-- Incluí SIEMPRE los datos de contacto completos al inicio
-- Si no tiene experiencia, el objetivo profesional debe ser muy fuerte y específico para ESTE puesto
-- Texto plano sin asteriscos ni símbolos raros
-- Lenguaje argentino profesional
+1. Usá SOLO la información real del candidato. NO inventes datos, fechas, ni empresas que no mencionó.
+2. Si describió sus tareas con palabras simples (ej: "armaba rollos de tela"), transformalas en lenguaje profesional (ej: "Preparación y embalaje de producto textil para distribución")
+3. Si menciona habilidades como auto-elevador aunque sea por poco tiempo, incluilas como "Manejo de autoelevador/Clark (nivel básico)"
+4. Si no tiene experiencia formal, el OBJETIVO PROFESIONAL debe ser muy potente, específico para este puesto y esta empresa
+5. SIEMPRE incluí los datos de contacto completos al inicio
+6. Texto plano sin asteriscos, sin negritas con **, sin guiones decorativos
+7. Lenguaje argentino profesional
 
-Generá el CV adaptado completo y profesional.`;
+Generá el CV completo ahora:`;
 
-  if (apiKey) {
-    const cvAdaptado = await llamarGemini(prompt, apiKey);
-    if (cvAdaptado) {
-      cvAdaptadoTexto = cvAdaptado;
+  try {
+    const cvGenerado = await llamarGemini(prompt, apiKey);
+    if (cvGenerado) {
+      cvAdaptadoTexto = cvGenerado;
+      const tipoFormato = esGrande ?
+        '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para sistemas automáticos de selección de empresas grandes.</div>' :
+        '<div class="aviso-ats" style="border-color:#22c55e">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
       document.getElementById('cv-adaptado-contenido').innerHTML =
-        `<div class="cv-adaptado-box">${cvAdaptado.replace(/\n/g, '<br>')}</div>`;
+        tipoFormato + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
       return;
     }
+  } catch (e) {
+    console.log('Error Gemini:', e);
   }
 
-  // CV adaptado sin IA
-  const nombre = perfil.nombre || 'Candidato';
-  const celular = perfil.celular || '';
-  const emailC = perfil.emailContacto || '';
-  const ciudad = perfil.ciudad || 'Argentina';
-  const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
-  const expEmpresa = perfil.expEmpresa || '';
-  const expDetalle = perfil.expDetalle || '';
-  const estudiosVal = perfil.estudios || '';
-
-  cvAdaptadoTexto = `CURRÍCULUM VITAE
-Adaptado para: ${emp.titulo} en ${emp.empresa}
-
-DATOS PERSONALES Y CONTACTO
-Nombre: ${nombre}
-${celular ? `Celular: ${celular}` : ''}
-${emailC ? `Email: ${emailC}` : ''}
-${ciudad ? `Localidad: ${ciudad}` : ''}
-País: Argentina
-
-OBJETIVO PROFESIONAL
-Me postulo para el puesto de ${emp.titulo} en ${emp.empresa}.
-${perfil.experiencia === 'sin_exp'
-  ? 'Me caracterizo por mi responsabilidad, puntualidad y gran predisposición para aprender y adaptarme rápidamente al entorno laboral. Estoy disponible de forma inmediata para incorporarme y capacitarme.'
-  : `Cuento con experiencia en ${expEmpresa || 'el área'} y busco nuevos desafíos profesionales donde pueda aportar mis conocimientos y seguir creciendo.`}
-
-EXPERIENCIA LABORAL
-${expEmpresa ? `Empresa: ${expEmpresa}
-Tareas: ${expDetalle || 'Operaciones generales del sector'}` :
-(perfil.experiencia === 'sin_exp'
-  ? 'Sin experiencia laboral formal previa. Disponible para capacitación inmediata a cargo de la empresa.'
-  : expDetalle || 'Experiencia en el área')}
-
-HABILIDADES Y COMPETENCIAS
-${habilidadesTexto || 'Trabajo en equipo, responsabilidad, puntualidad, predisposición para aprender, adaptabilidad'}
-
-EDUCACIÓN
-${estudiosVal === 'primario' ? 'Nivel Primario Completo' :
-  estudiosVal === 'secundario_inc' ? 'Nivel Secundario Incompleto' :
-  estudiosVal === 'secundario' ? 'Nivel Secundario Completo' :
-  estudiosVal === 'terciario' ? 'Estudios Terciarios en Curso' :
-  estudiosVal === 'universitario' ? 'Nivel Universitario Completo' : 'Formación en proceso'}
-${perfil.institucion ? `Institución: ${perfil.institucion}` : ''}
-
-DISPONIBILIDAD
-Inmediata
-Horarios: ${(perfil.horarios || horarios).includes('cualquier_horario') ? 'Cualquier horario / Turnos rotativos' :
-  (perfil.horarios || horarios).map(h =>
-    h === 'manana' ? 'Turno Mañana' :
-    h === 'tarde' ? 'Turno Tarde' :
-    h === 'noche' ? 'Turno Noche' :
-    h === 'rotativo' ? 'Turno Rotativo' : h
-  ).join(' / ')}`;
-
-  document.getElementById('cv-adaptado-contenido').innerHTML =
-    `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
-}
-
-window.adaptarCV = adaptarCV;
+  // Fallback sin IA
+  cvAdaptadoTexto = generarCVbasico(emp, nombre, celular, emailC, ciudad,
+    edad, estudiosTexto, institucion, expEmpresa, expDetalle,
+    habilidadesTexto, horarioTexto, expTexto, i
 
 // ============================================
 // COPIAR CV
