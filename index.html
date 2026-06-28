@@ -20,9 +20,9 @@
       </button>
       <p class="login-info">
         Al continuar aceptás nuestros
-        <a href="#terminos" style="color:#7c3aed">Términos y Condiciones</a>
+        <a href="#" style="color:#7c3aed">Términos y Condiciones</a>
         y la
-        <a href="#privacidad" style="color:#7c3aed">Política de Privacidad</a>
+        <a href="#" style="color:#7c3aed">Política de Privacidad</a>
       </p>
     </div>
   </div>
@@ -40,121 +40,175 @@
       <h2>Tu perfil</h2>
       <p class="subtitulo">Completá tus datos para encontrar los mejores empleos</p>
 
-      <label>Tu nombre completo</label>
-      <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
+      <!-- DATOS PERSONALES -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">👤 Datos personales</div>
 
-      <label>¿Cuántos años tenés?</label>
-      <input type="number" id="edad" placeholder="Ej: 25" min="14" max="99">
+        <label>Tu nombre completo</label>
+        <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
 
-      <label>¿En qué barrio o ciudad vivís?</label>
-      <input type="text" id="ciudad" placeholder="Ej: José C. Paz, Zona Norte GBA">
+        <label>¿Cuántos años tenés?</label>
+        <input type="number" id="edad" placeholder="Ej: 25" min="14" max="99">
 
-      <label>¿Hasta dónde podés viajar?</label>
-      <div class="toggles">
-        <button class="toggle activo" data-valor="zona">Mi zona</button>
-        <button class="toggle" data-valor="amba">Todo AMBA</button>
-        <button class="toggle" data-valor="cualquier">Cualquier lugar</button>
+        <label>Celular</label>
+        <input type="tel" id="celular" placeholder="Ej: 11 2345-6789">
+
+        <label>Email</label>
+        <input type="email" id="email-contacto" placeholder="Ej: juan@gmail.com">
+
+        <label>¿En qué barrio o ciudad vivís?</label>
+        <input type="text" id="ciudad" placeholder="Ej: José C. Paz, Zona Norte GBA">
+
+        <label>¿Hasta dónde podés viajar?</label>
+        <div class="toggles">
+          <button class="toggle activo" data-valor="zona">Mi zona</button>
+          <button class="toggle" data-valor="amba">Todo AMBA</button>
+          <button class="toggle" data-valor="cualquier">Cualquier lugar</button>
+        </div>
       </div>
 
-      <label>Nivel de estudios</label>
-      <select id="estudios">
-        <option value="">Seleccioná...</option>
-        <option value="primario">Primario completo</option>
-        <option value="secundario_inc">Secundario incompleto</option>
-        <option value="secundario">Secundario completo</option>
-        <option value="terciario">Terciario/Universitario</option>
-        <option value="universitario">Universitario completo</option>
-      </select>
+      <!-- ESTUDIOS -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">📚 Educación</div>
 
-      <label>¿Tenés experiencia laboral?</label>
-      <div class="toggles">
-        <button class="toggle activo" data-valor="sin_exp" data-grupo="experiencia">Sin experiencia</button>
-        <button class="toggle" data-valor="poca_exp" data-grupo="experiencia">Poca (1-2 años)</button>
-        <button class="toggle" data-valor="media_exp" data-grupo="experiencia">Media (3-5 años)</button>
-        <button class="toggle" data-valor="mucha_exp" data-grupo="experiencia">Mucha (+5 años)</button>
+        <label>Nivel de estudios</label>
+        <select id="estudios">
+          <option value="">Seleccioná...</option>
+          <option value="primario">Primario completo</option>
+          <option value="secundario_inc">Secundario incompleto</option>
+          <option value="secundario">Secundario completo</option>
+          <option value="terciario">Terciario/Universitario en curso</option>
+          <option value="universitario">Universitario completo</option>
+        </select>
+
+        <label>¿En qué escuela o institución estudiaste? (opcional)</label>
+        <input type="text" id="institucion" placeholder="Ej: EEST N°1 de San Miguel, UTN...">
       </div>
 
-      <div id="zona-experiencia-detalle" class="oculto">
-        <label>¿En qué trabajaste antes?</label>
-        <input type="text" id="experiencia-detalle" placeholder="Ej: Repositor en supermercado, operario textil...">
+      <!-- EXPERIENCIA -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">💼 Tu experiencia laboral</div>
+
+        <label>¿Tenés experiencia laboral?</label>
+        <div class="toggles">
+          <button class="toggle activo" data-valor="sin_exp" data-grupo="experiencia">Sin experiencia</button>
+          <button class="toggle" data-valor="poca_exp" data-grupo="experiencia">Poca (1-2 años)</button>
+          <button class="toggle" data-valor="media_exp" data-grupo="experiencia">Media (3-5 años)</button>
+          <button class="toggle" data-valor="mucha_exp" data-grupo="experiencia">Mucha (+5 años)</button>
+        </div>
+
+        <div id="zona-experiencia-detalle" class="oculto">
+          <label>¿En qué lugar o empresa trabajaste?</label>
+          <input type="text" id="experiencia-empresa" placeholder="Ej: Fábrica textil, CCU Argentina, Carrefour...">
+
+          <label>Contame qué hacías ahí en el día a día (escribilo como te salga)</label>
+          <textarea id="experiencia-detalle" placeholder="Ej: En la textil me tocaba armar los rollos de tela y cargar las cajas en el camión. En CCU estaba en la parte de las máquinas controlando que salga todo bien y limpiando el lugar."></textarea>
+        </div>
+
+        <label style="margin-top:16px">¿Algo más que sepas hacer o aclaración para la IA?</label>
+        <textarea id="info-extra" placeholder="Ej: Manejé auto-elevador por poco tiempo pero sé usarlo. También tengo experiencia cuidando niños aunque no fue un trabajo formal..."></textarea>
       </div>
 
-      <label>¿Qué tipo de trabajo buscás?</label>
-      <input type="text" id="puesto-buscado" placeholder="Ej: Operario, repositor, cajero, cualquier cosa...">
+      <!-- QUÉ BUSCÁS -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">🔍 Qué trabajo buscás</div>
 
-      <label>Modalidad</label>
-      <div class="toggles">
-        <button class="toggle activo" data-valor="presencial" data-grupo="modalidad">Presencial</button>
-        <button class="toggle" data-valor="remoto" data-grupo="modalidad">Remoto</button>
-        <button class="toggle" data-valor="hibrido" data-grupo="modalidad">Híbrido</button>
+        <label>¿Qué tipo de trabajo buscás?</label>
+        <input type="text" id="puesto-buscado" placeholder="Ej: Operario, repositor, cajero, cualquier cosa...">
+
+        <label>Modalidad</label>
+        <div class="toggles">
+          <button class="toggle activo" data-valor="presencial" data-grupo="modalidad">Presencial</button>
+          <button class="toggle" data-valor="remoto" data-grupo="modalidad">Remoto</button>
+          <button class="toggle" data-valor="hibrido" data-grupo="modalidad">Híbrido</button>
+        </div>
+
+        <label>Disponibilidad horaria</label>
+        <div class="toggles-wrap">
+          <button class="toggle-check" data-valor="manana">☀️ Mañana</button>
+          <button class="toggle-check" data-valor="tarde">🌤️ Tarde</button>
+          <button class="toggle-check" data-valor="noche">🌙 Noche</button>
+          <button class="toggle-check" data-valor="rotativo">🔄 Rotativo</button>
+          <button class="toggle-check activo" data-valor="cualquier_horario">✅ Cualquier horario</button>
+        </div>
+
+        <label>Pretensión salarial (opcional)</label>
+        <input type="text" id="salario" placeholder="Ej: $500.000, lo que sea, a convenir...">
       </div>
 
-      <label>Disponibilidad horaria</label>
-      <div class="toggles-wrap">
-        <button class="toggle-check" data-valor="manana">☀️ Mañana</button>
-        <button class="toggle-check" data-valor="tarde">🌤️ Tarde</button>
-        <button class="toggle-check" data-valor="noche">🌙 Noche</button>
-        <button class="toggle-check" data-valor="rotativo">🔄 Rotativo</button>
-        <button class="toggle-check activo" data-valor="cualquier_horario">✅ Cualquier horario</button>
+      <!-- HABILIDADES -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">⭐ Habilidades y certificaciones</div>
+        <div class="toggles-wrap">
+          <button class="toggle-check" data-valor="Registro auto">🚗 Registro auto</button>
+          <button class="toggle-check" data-valor="Registro moto">🏍️ Registro moto</button>
+          <button class="toggle-check" data-valor="Registro camión">🚛 Registro camión</button>
+          <button class="toggle-check" data-valor="Manejo de auto-elevador">🏗️ Auto-elevador</button>
+          <button class="toggle-check" data-valor="Manejo de PC">💻 Manejo de PC</button>
+          <button class="toggle-check" data-valor="Excel">📊 Excel</button>
+          <button class="toggle-check" data-valor="Inglés">🇺🇸 Inglés</button>
+          <button class="toggle-check" data-valor="Portugués">🇧🇷 Portugués</button>
+          <button class="toggle-check" data-valor="Atención al cliente">🤝 Atención al cliente</button>
+          <button class="toggle-check" data-valor="Trabajo en altura">🪜 Trabajo en altura</button>
+          <button class="toggle-check" data-valor="Soldadura">🔧 Soldadura</button>
+          <button class="toggle-check" data-valor="Electricidad">⚡ Electricidad</button>
+          <button class="toggle-check" data-valor="Plomería">🔩 Plomería</button>
+          <button class="toggle-check" data-valor="Cocina">👨‍🍳 Cocina</button>
+          <button class="toggle-check" data-valor="Cuidado de personas">❤️ Cuidado de personas</button>
+          <button class="toggle-check" data-valor="Manejo de caja">💰 Manejo de caja</button>
+          <button class="toggle-check" data-valor="Ventas">📈 Ventas</button>
+          <button class="toggle-check" data-valor="Redes sociales">📱 Redes sociales</button>
+        </div>
       </div>
 
-      <label>Habilidades y certificaciones</label>
-      <div class="toggles-wrap">
-        <button class="toggle-check" data-valor="licencia_auto">🚗 Registro auto</button>
-        <button class="toggle-check" data-valor="licencia_moto">🏍️ Registro moto</button>
-        <button class="toggle-check" data-valor="carretilla">🏗️ Carretilla</button>
-        <button class="toggle-check" data-valor="manejo_pc">💻 Manejo de PC</button>
-        <button class="toggle-check" data-valor="ingles">🇺🇸 Inglés</button>
-        <button class="toggle-check" data-valor="atencion_cliente">🤝 Atención al cliente</button>
-      </div>
-
-      <label>Pretensión salarial (opcional)</label>
-      <input type="text" id="salario" placeholder="Ej: $500.000, lo que sea, a convenir...">
-
-      <label>Tu CV (opcional pero recomendado)</label>
-      <div class="cv-opciones">
-        <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
-          <span class="cv-opcion-icono">📄</span>
-          <div>
-            <div class="cv-opcion-titulo">Subir PDF</div>
-            <div class="cv-opcion-sub">La app extrae el texto</div>
+      <!-- CV -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">📄 Tu CV (opcional)</div>
+        <div class="cv-opciones">
+          <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
+            <span class="cv-opcion-icono">📄</span>
+            <div>
+              <div class="cv-opcion-titulo">Subir PDF</div>
+              <div class="cv-opcion-sub">La app extrae el texto</div>
+            </div>
+          </div>
+          <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
+            <span class="cv-opcion-icono">✏️</span>
+            <div>
+              <div class="cv-opcion-titulo">Pegar texto</div>
+              <div class="cv-opcion-sub">Copiá y pegá tu CV</div>
+            </div>
+          </div>
+          <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
+            <span class="cv-opcion-icono">🤖</span>
+            <div>
+              <div class="cv-opcion-titulo">No tengo CV</div>
+              <div class="cv-opcion-sub">La IA lo genera</div>
+            </div>
           </div>
         </div>
-        <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
-          <span class="cv-opcion-icono">✏️</span>
-          <div>
-            <div class="cv-opcion-titulo">Pegar texto</div>
-            <div class="cv-opcion-sub">Copiá y pegá tu CV</div>
+
+        <div id="zona-pdf" class="zona-cv oculto">
+          <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
+            <span class="upload-icono">📁</span>
+            <p>Tocá para seleccionar tu PDF</p>
           </div>
+          <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
+          <div id="pdf-estado"></div>
         </div>
-        <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
-          <span class="cv-opcion-icono">🤖</span>
-          <div>
-            <div class="cv-opcion-titulo">No tengo CV</div>
-            <div class="cv-opcion-sub">La IA lo genera por vos</div>
-          </div>
+
+        <div id="zona-texto" class="zona-cv oculto">
+          <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
+        </div>
+
+        <div id="zona-generar" class="zona-cv oculto">
+          <p class="api-key-info">La IA va a generar tu CV con los datos que completaste arriba.</p>
+          <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
+          <div id="cv-generado-preview"></div>
         </div>
       </div>
 
-      <div id="zona-pdf" class="zona-cv oculto">
-        <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
-          <span class="upload-icono">📁</span>
-          <p>Tocá para seleccionar tu PDF</p>
-        </div>
-        <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
-        <div id="pdf-estado"></div>
-      </div>
-
-      <div id="zona-texto" class="zona-cv oculto">
-        <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
-      </div>
-
-      <div id="zona-generar" class="zona-cv oculto">
-        <p class="api-key-info">La IA va a generar tu CV con los datos que completaste arriba.</p>
-        <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
-        <div id="cv-generado-preview"></div>
-      </div>
-
+      <!-- API KEY -->
       <div class="api-key-box">
         <div class="api-key-header" onclick="toggleAPIkey()">
           <span>⚙️ Activar IA real (Gemini)</span>
@@ -163,7 +217,7 @@
         <div id="api-key-zona" class="oculto">
           <p class="api-key-info">Pegá tu API Key de aistudio.google.com para activar análisis real con IA.</p>
           <input type="password" id="gemini-key" placeholder="Tu API Key de Gemini...">
-          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">💾 Guardar</button>
+          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">💾 Guardar para siempre</button>
           <div id="api-key-estado"></div>
         </div>
       </div>
