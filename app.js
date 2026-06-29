@@ -1,18 +1,12 @@
 // ============================================
-// LABUIA - App principal con Firebase + Jooble
+// LABUIA - App principal
 // ============================================
 
 import { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc }
   from './firebase-config.js';
 
-// ============================================
-// CONFIGURACIÓN
-// ============================================
-
 const JOOBLE_API_KEY = '9a26ed6d-5b55-40aa-807f-e5ea117782ca';
-const JOOBLE_API_URL = 'https://jooble.org/api/';
 
-// Estado global
 let perfil = {};
 let modalidad = 'presencial';
 let viaje = 'zona';
@@ -30,7 +24,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ============================================
-// AUTENTICACIÓN - SESIÓN PERSISTENTE
+// AUTENTICACIÓN
 // ============================================
 
 onAuthStateChanged(auth, async (usuario) => {
@@ -83,7 +77,7 @@ async function cargarPerfilFirebase(uid) {
     const snap = await getDoc(doc(db, 'usuarios', uid));
     if (snap.exists()) {
       const datos = snap.data();
-      perfil = datos;
+      perfil = { ...datos };
       if (datos.nombre) document.getElementById('nombre').value = datos.nombre;
       if (datos.edad) document.getElementById('edad').value = datos.edad;
       if (datos.celular) document.getElementById('celular').value = datos.celular;
@@ -93,20 +87,10 @@ async function cargarPerfilFirebase(uid) {
       if (datos.salario) document.getElementById('salario').value = datos.salario;
       if (datos.estudios) document.getElementById('estudios').value = datos.estudios;
       if (datos.institucion) document.getElementById('institucion').value = datos.institucion;
-      if (datos.expEmpresa) {
-        const el = document.getElementById('experiencia-empresa');
-        if (el) el.value = datos.expEmpresa;
-      }
-      if (datos.expDetalle) {
-        const el = document.getElementById('experiencia-detalle');
-        if (el) el.value = datos.expDetalle;
-      }
-      if (datos.infoExtra) {
-        const el = document.getElementById('info-extra');
-        if (el) el.value = datos.infoExtra;
-      }
+      if (datos.expEmpresa) { const el = document.getElementById('experiencia-empresa'); if (el) el.value = datos.expEmpresa; }
+      if (datos.expDetalle) { const el = document.getElementById('experiencia-detalle'); if (el) el.value = datos.expDetalle; }
+      if (datos.infoExtra) { const el = document.getElementById('info-extra'); if (el) el.value = datos.infoExtra; }
       if (datos.cv) cvFinal = datos.cv;
-
       if (datos.geminiKey) {
         localStorage.setItem('labuia_gemini_key', datos.geminiKey);
         const el = document.getElementById('gemini-key');
@@ -117,7 +101,6 @@ async function cargarPerfilFirebase(uid) {
           estado.textContent = '✅ IA activada';
         }
       }
-
       if (datos.modalidad) { modalidad = datos.modalidad; actualizarToggle('modalidad', modalidad); }
       if (datos.viaje) { viaje = datos.viaje; actualizarToggleSimple(viaje); }
       if (datos.experiencia) {
@@ -209,7 +192,7 @@ document.querySelectorAll('.toggle-check').forEach(btn => {
 });
 
 // ============================================
-// API KEY GEMINI
+// API KEY
 // ============================================
 
 function toggleAPIkey() {
@@ -285,27 +268,45 @@ async function procesarPDF(input) {
 window.procesarPDF = procesarPDF;
 
 // ============================================
-// LLAMAR GEMINI
+// LLAMAR GEMINI - SOPORTA CUALQUIER KEY
 // ============================================
 
 async function llamarGemini(prompt, apiKey) {
-  const modelos = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'];
-  for (const modelo of modelos) {
+  // Todos los endpoints posibles según tipo de key
+  const intentos = [
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+      body: { contents: [{ parts: [{ text: prompt }] }] }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      body: { contents: [{ parts: [{ text: prompt }] }] }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+      body: { contents: [{ parts: [{ text: prompt }] }] }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+      body: { contents: [{ parts: [{ text: prompt }] }] }
+    },
+    {
+      url: `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      body: { contents: [{ parts: [{ text: prompt }] }] }
+    }
+  ];
+
+  for (const intento of intentos) {
     try {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 2048 }
-          })
-        }
-      );
+      const res = await fetch(intento.url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(intento.body)
+      });
+      if (!res.ok) continue;
       const data = await res.json();
       const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (texto) return texto;
+      if (texto && texto.length > 50) return texto;
     } catch {}
   }
   return null;
@@ -316,6 +317,7 @@ async function llamarGemini(prompt, apiKey) {
 // ============================================
 
 function construirPerfilTexto() {
+  const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
   const horarioTexto = (perfil.horarios || horarios)
     .map(h => h === 'cualquier_horario' ? 'Cualquier horario' :
       h === 'manana' ? 'Turno mañana' :
@@ -329,23 +331,29 @@ function construirPerfilTexto() {
     (perfil.experiencia || experiencia) === 'media_exp' ? 'Experiencia media (3-5 años)' :
     'Experiencia amplia (+5 años)';
 
+  const estudiosTexto = (perfil.estudios || '') === 'primario' ? 'Primario completo' :
+    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
+    (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
+    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
+    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : '';
+
   return `
-Nombre: ${perfil.nombre || ''}
-Edad: ${perfil.edad || 'No especificada'}
-Celular: ${perfil.celular || 'No especificado'}
-Email: ${perfil.emailContacto || 'No especificado'}
-Ciudad: ${perfil.ciudad || 'Argentina'}
-Nivel de experiencia: ${expTexto}
-Empresa(s) donde trabajó: ${perfil.expEmpresa || 'No especificado'}
-Descripción de sus tareas (en sus palabras): ${perfil.expDetalle || 'No especificado'}
-Información adicional: ${perfil.infoExtra || 'No especificado'}
-Estudios: ${perfil.estudios || 'No especificado'}
-Institución educativa: ${perfil.institucion || 'No especificada'}
-Habilidades: ${(perfil.habilidades || habilidades).join(', ') || 'No especificadas'}
-Disponibilidad: ${horarioTexto}
-Modalidad buscada: ${perfil.modalidad || modalidad}
-${cvFinal ? `CV cargado:\n${cvFinal.substring(0, 800)}` : ''}
-  `.trim();
+NOMBRE: ${perfil.nombre || ''}
+EDAD: ${perfil.edad || ''} años
+CELULAR: ${perfil.celular || ''}
+EMAIL: ${perfil.emailContacto || ''}
+LOCALIDAD: ${perfil.ciudad || 'Argentina'}
+NIVEL DE EXPERIENCIA: ${expTexto}
+EMPRESAS DONDE TRABAJÓ: ${perfil.expEmpresa || 'Ninguna'}
+LO QUE HACÍA (en sus palabras): ${perfil.expDetalle || 'No especificado'}
+INFORMACIÓN EXTRA QUE QUIERE INCLUIR: ${perfil.infoExtra || 'Ninguna'}
+ESTUDIOS: ${estudiosTexto}
+INSTITUCIÓN: ${perfil.institucion || ''}
+HABILIDADES: ${habilidadesTexto || 'No especificadas'}
+DISPONIBILIDAD HORARIA: ${horarioTexto}
+MODALIDAD: ${perfil.modalidad || modalidad}
+${cvFinal ? `\nCV PREVIO DEL CANDIDATO:\n${cvFinal.substring(0, 1000)}` : ''}
+`.trim();
 }
 
 // ============================================
@@ -360,70 +368,43 @@ async function generarCVconIA() {
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
   const puesto = perfil.puestoBuscado || document.getElementById('puesto-buscado').value.trim();
 
-  const prompt = `Sos un experto en recursos humanos argentino especializado en redactar CVs profesionales.
-Tu tarea es generar un CV profesional y competitivo.
-
-INFORMACIÓN DEL CANDIDATO:
-${construirPerfilTexto()}
-PUESTO QUE BUSCA: ${puesto || 'Cualquier empleo'}
-
-INSTRUCCIONES:
-- Si describió sus tareas con palabras simples, transformalas en lenguaje profesional
-- Si tiene habilidades técnicas aunque sea por poco tiempo, incluílas con "(conocimiento práctico)"
-- Si no tiene experiencia formal, destacá fuertemente las ganas de trabajar y capacidad de aprendizaje
-- Incluí SIEMPRE los datos de contacto completos al inicio
-- Texto plano sin asteriscos ni símbolos raros
-- Lenguaje argentino profesional
-
-SECCIONES: DATOS PERSONALES Y CONTACTO, OBJETIVO PROFESIONAL, EXPERIENCIA LABORAL, HABILIDADES Y COMPETENCIAS, EDUCACIÓN, DISPONIBILIDAD`;
-
-  if (apiKey) {
-    const texto = await llamarGemini(prompt, apiKey);
-    if (texto) {
-      cvFinal = texto;
-      preview.textContent = texto;
-      if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
-      return;
-    }
+  if (!apiKey) {
+    preview.textContent = '⚠️ Necesitás configurar tu API Key de Gemini para usar esta función.';
+    return;
   }
 
-  // CV local sin IA
-  const estudiosTexto = (perfil.estudios || '') === 'primario' ? 'Primario completo' :
-    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
-    (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
-    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
-    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : 'Formación en proceso';
+  const prompt = `Sos un experto en recursos humanos argentino.
+Generá un CV profesional completo para esta persona.
 
-  cvFinal = `CURRÍCULUM VITAE
+${construirPerfilTexto()}
 
+PUESTO QUE BUSCA: ${puesto || 'Cualquier empleo'}
+
+INSTRUCCIONES CRÍTICAS:
+- Transformá las descripciones en palabras simples a lenguaje profesional de RRHH
+- Ej: "acomodaba el depósito" → "Organización y gestión de stock en depósito"
+- Ej: "manejé auto elevador" → "Operación de autoelevador / Clark (conocimiento práctico)"
+- Las habilidades deben tener nombres legibles: "Atención al cliente" NO "atencion_cliente"
+- Incluí datos de contacto completos al inicio
+- Texto plano sin asteriscos
+- Lenguaje argentino profesional
+
+SECCIONES OBLIGATORIAS:
 DATOS PERSONALES Y CONTACTO
-Nombre: ${perfil.nombre || ''}
-${perfil.edad ? `Edad: ${perfil.edad} años` : ''}
-${perfil.celular ? `Celular: ${perfil.celular}` : ''}
-${perfil.emailContacto ? `Email: ${perfil.emailContacto}` : ''}
-${perfil.ciudad ? `Localidad: ${perfil.ciudad}, Argentina` : 'País: Argentina'}
-
 OBJETIVO PROFESIONAL
-${(perfil.experiencia || experiencia) === 'sin_exp'
-  ? `Joven con muchas ganas de incorporarme al mundo laboral. Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Busco mi primera oportunidad en ${puesto || 'el área que me permita crecer'}.`
-  : `Profesional con experiencia en ${perfil.expEmpresa || 'el área'}. Busco nuevas oportunidades en ${puesto || 'mi especialidad'}.`}
-
 EXPERIENCIA LABORAL
-${perfil.expEmpresa ? `Empresa: ${perfil.expEmpresa}
-Tareas: ${perfil.expDetalle || 'Tareas operativas'}` : 'Sin experiencia formal previa. Disponible para capacitación.'}
-${perfil.infoExtra ? `\nInformación adicional: ${perfil.infoExtra}` : ''}
-
 HABILIDADES Y COMPETENCIAS
-${(perfil.habilidades || habilidades).join(', ') || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
-
 EDUCACIÓN
-${estudiosTexto}
-${perfil.institucion ? `Institución: ${perfil.institucion}` : ''}
+DISPONIBILIDAD`;
 
-DISPONIBILIDAD
-Inmediata`;
-
-  preview.textContent = cvFinal;
+  const texto = await llamarGemini(prompt, apiKey);
+  if (texto) {
+    cvFinal = texto;
+    preview.textContent = texto;
+    if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
+  } else {
+    preview.textContent = '❌ No se pudo conectar con la IA. Verificá tu API Key.';
+  }
 }
 
 window.generarCVconIA = generarCVconIA;
@@ -461,9 +442,7 @@ async function guardarPerfilYBuscar() {
     modalidad, viaje, horarios, habilidades, cv: cvFinal
   };
 
-  if (usuarioActual) {
-    await guardarPerfilFirebase(usuarioActual.uid, perfil);
-  }
+  if (usuarioActual) await guardarPerfilFirebase(usuarioActual.uid, perfil);
 
   irA('pantalla-resultados');
   buscarEmpleos(puesto, ciudad);
@@ -472,7 +451,7 @@ async function guardarPerfilYBuscar() {
 window.guardarPerfilYBuscar = guardarPerfilYBuscar;
 
 // ============================================
-// BUSCAR EMPLEOS CON JOOBLE
+// BUSCAR EMPLEOS
 // ============================================
 
 async function buscarEmpleos(puesto, ciudad) {
@@ -487,38 +466,49 @@ async function buscarEmpleos(puesto, ciudad) {
 
   try {
     const empleos = await obtenerEmpleosJooble(puesto, ciudad);
-    const analizados = await analizarConIA(empleos, puesto);
+    const apiKey = localStorage.getItem('labuia_gemini_key') || '';
+    const analizados = apiKey
+      ? await analizarConIA(empleos, puesto)
+      : empleos.map((e, i) => ({
+          ...e,
+          score: Math.max(88 - (i * 4), 50),
+          analisis: {
+            fortalezas: ['Empleo real en Argentina', 'Coincide con tu búsqueda', 'Activá la IA para análisis real'],
+            debilidades: ['Configurá tu API Key para análisis detallado'],
+            resumen: 'Score estimado. Activá la IA para compatibilidad real.'
+          }
+        }));
+
     empleosActuales = analizados.sort((a, b) => b.score - a.score);
     mostrarResultados(empleosActuales, puesto);
   } catch (e) {
     console.log('Error:', e);
     document.getElementById('lista-empleos').innerHTML =
-      '<div class="cargando">❌ Error al buscar. Revisá tu conexión e intentá de nuevo.</div>';
+      '<div class="cargando">❌ Error al buscar. Revisá tu conexión.</div>';
   }
 }
 
 // ============================================
-// API JOOBLE - EMPLEOS REALES
+// JOOBLE API
 // ============================================
 
 async function obtenerEmpleosJooble(puesto, ciudad) {
   try {
-    const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(
-      `${JOOBLE_API_URL}${JOOBLE_API_KEY}`
-    )}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        keywords: puesto,
-        location: ciudad || 'Argentina',
-        country: 'ar',
-        page: 1,
-        resultsOnPage: 20
-      })
-    });
+    const response = await fetch(
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://jooble.org/api/${JOOBLE_API_KEY}`)}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          keywords: puesto,
+          location: ciudad || 'Argentina',
+          page: 1,
+          resultsOnPage: 20
+        })
+      }
+    );
 
     const data = await response.json();
-
     if (data.jobs && data.jobs.length > 0) {
       return data.jobs.slice(0, 15).map((job, i) => ({
         id: i + 1,
@@ -538,65 +528,44 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
     console.log('Error Jooble:', e);
   }
 
-  // Si Jooble falla, usamos empleos de respaldo
   return generarEmpleosRespaldo(puesto, ciudad);
 }
 
 function detectarEmpresaGrande(nombre) {
-  const grandes = ['arcor', 'carrefour', 'mercado libre', 'mercadolibre', 'banco',
-    'galicia', 'santander', 'bbva', 'hsbc', 'quilmes', 'pepsico', 'unilever',
-    'walmart', 'coto', 'jumbo', 'dia', 'molinos', 'bimbo', 'kraft', 'danone',
-    'coca-cola', 'personal', 'claro', 'movistar', 'telecom', 'despegar',
-    'globant', 'mercadopago', 'pedidosya', 'rappi'];
-  const nombreLower = nombre.toLowerCase();
-  return grandes.some(g => nombreLower.includes(g));
+  const grandes = ['arcor','carrefour','mercado libre','mercadolibre','banco','galicia',
+    'santander','bbva','hsbc','quilmes','pepsico','unilever','walmart','coto','jumbo',
+    'dia','molinos','bimbo','kraft','danone','coca-cola','personal','claro','movistar',
+    'telecom','despegar','globant','mercadopago','pedidosya','rappi','adecco','manpower'];
+  return grandes.some(g => nombre.toLowerCase().includes(g));
 }
 
 function generarEmpleosRespaldo(puesto, ciudad) {
   const zona = ciudad || 'Buenos Aires';
-  const puestoLower = puesto.toLowerCase();
-  const empresas = {
-    repositor: [
-      { empresa: 'Carrefour Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
-      { empresa: 'Supermercados DIA', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
-      { empresa: 'Coto CICSA', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
-      { empresa: 'Jumbo Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
-      { empresa: 'Walmart Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
-    ],
-    operario: [
-      { empresa: 'Arcor', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
-      { empresa: 'Molinos Río de la Plata', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
-      { empresa: 'Quilmes', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
-      { empresa: 'Pepsico Argentina', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
-      { empresa: 'CCU Argentina', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
-    ],
-    cajero: [
-      { empresa: 'Carrefour Argentina', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
-      { empresa: 'Farmacity', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
-      { empresa: 'Coto CICSA', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
-      { empresa: 'Rapipago', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
-      { empresa: 'Pago Fácil', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
-    ],
-    default: [
-      { empresa: 'Adecco Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
-      { empresa: 'Manpower Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
-      { empresa: 'Randstad Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
-      { empresa: 'Kelly Services', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
-      { empresa: 'Bayton RRHH', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
-    ]
+  const p = puesto.toLowerCase();
+  const mapa = {
+    repositor: ['Carrefour Argentina','Supermercados DIA','Coto CICSA','Jumbo Argentina','Walmart Argentina','Changomas'],
+    operario: ['Arcor','Molinos Río de la Plata','Quilmes','Pepsico Argentina','CCU Argentina','Bimbo Argentina'],
+    cajero: ['Carrefour Argentina','Farmacity','Coto CICSA','Rapipago','Pago Fácil','Walmart Argentina'],
+    limpieza: ['Sodexo Argentina','ISS Argentina','Compass Group','Limpiolux','Cintas Corporation'],
+    seguridad: ['Securitas Argentina','G4S Argentina','Prosegur Argentina','Brinks Argentina'],
+    mozo: ['McDonald\'s Argentina','Burger King Argentina','Mostaza','TGI Fridays','Café Martínez'],
+    delivery: ['PedidosYa','Rappi Argentina','Glovo Argentina','Andreani','OCA Argentina'],
+    chofer: ['Andreani','DHL Argentina','OCA Argentina','Mercado Envíos','Logística 3PL'],
   };
+  const clave = Object.keys(mapa).find(k => p.includes(k)) || null;
+  const empresas = clave ? mapa[clave] : ['Adecco Argentina','Manpower Argentina','Randstad Argentina','Kelly Services','Bayton RRHH','Grupo Gestión'];
+  const link = `https://ar.jooble.org/trabajos-${p.replace(/ /g,'-')}/${encodeURIComponent(zona)}`;
 
-  const clave = Object.keys(empresas).find(k => puestoLower.includes(k)) || 'default';
-  return empresas[clave].map((emp, i) => ({
+  return empresas.map((emp, i) => ({
     id: i + 1,
     titulo: puesto,
-    empresa: emp.empresa,
+    empresa: emp,
     ubicacion: `${zona}, Argentina`,
-    descripcion: `Oferta de ${puesto} en ${emp.empresa}. Hacé clic en "Postularme" para ver los detalles completos y aplicar directamente en el portal de empleos.`,
-    link: emp.link,
+    descripcion: `Oferta de ${puesto} en ${emp}. Tocá "Postularme" para ver los detalles completos y aplicar directamente.`,
+    link,
     salario: '',
     fuente: 'Jooble',
-    esEmpresaGrande: detectarEmpresaGrande(emp.empresa),
+    esEmpresaGrande: detectarEmpresaGrande(emp),
     score: 0,
     analisis: null
   }));
@@ -609,28 +578,12 @@ function generarEmpleosRespaldo(puesto, ciudad) {
 async function analizarConIA(empleos, puesto) {
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
   const perfilTexto = construirPerfilTexto();
-
-  if (!apiKey) {
-    return empleos.map((e, i) => ({
-      ...e,
-      score: Math.max(88 - (i * 4), 50),
-      analisis: {
-        fortalezas: [
-          'Empleo real encontrado en Argentina',
-          'El puesto coincide con tu búsqueda',
-          'Activá la IA Gemini para ver análisis de compatibilidad real'
-        ],
-        debilidades: ['Configurá tu API Key en "Activar IA real" para análisis detallado'],
-        resumen: 'Score estimado. Activá la IA para ver tu compatibilidad real.'
-      }
-    }));
-  }
-
   const resultado = [];
+
   for (const empleo of empleos) {
     try {
       const prompt = `Sos un experto en RRHH argentino.
-Analizá la compatibilidad entre este perfil y esta oferta real de trabajo.
+Analizá compatibilidad entre este perfil y esta oferta.
 
 PERFIL:
 ${perfilTexto}
@@ -639,25 +592,15 @@ OFERTA:
 Puesto: ${empleo.titulo}
 Empresa: ${empleo.empresa}
 Ubicación: ${empleo.ubicacion}
-Descripción: ${empleo.descripcion.substring(0, 400)}
+Descripción: ${empleo.descripcion.substring(0, 300)}
 
-REGLAS:
-- Si el puesto no requiere experiencia y el candidato no tiene → score 70-85
-- Si tiene habilidades que coinciden → sumá puntos
-- Si describió experiencia relevante → valoralo aunque esté en sus palabras
-- Sé específico y útil
-
-Respondé SOLO con este JSON:
-{
-  "score": numero del 1 al 100,
-  "fortalezas": ["razón 1", "razón 2", "razón 3"],
-  "debilidades": ["punto 1", "punto 2"],
-  "resumen": "Una oración en español rioplatense"
-}`;
+Respondé SOLO con JSON válido:
+{"score":numero,"fortalezas":["r1","r2","r3"],"debilidades":["d1","d2"],"resumen":"una oración"}`;
 
       const texto = await llamarGemini(prompt, apiKey);
       if (texto) {
-        const analisis = JSON.parse(texto.replace(/```json|```/g, '').trim());
+        const limpio = texto.replace(/```json|```/g, '').trim();
+        const analisis = JSON.parse(limpio);
         resultado.push({ ...empleo, score: analisis.score || 50, analisis });
       } else {
         resultado.push({ ...empleo, score: 50, analisis: null });
@@ -676,14 +619,12 @@ Respondé SOLO con este JSON:
 function mostrarResultados(empleos, puesto) {
   document.getElementById('titulo-resultados').textContent = 'Empleos para vos';
   document.getElementById('subtitulo-resultados').textContent =
-    `${empleos.length} ofertas reales encontradas para "${puesto}"`;
+    `${empleos.length} ofertas encontradas para "${puesto}"`;
 
   document.getElementById('lista-empleos').innerHTML = `
     <div class="powered-by">🔍 Empleos provistos por <strong>Jooble</strong></div>
     ${empleos.map(emp => {
       const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
-      const badgeGrande = emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : '';
-      const salario = emp.salario ? `<span class="tag">💰 ${emp.salario}</span>` : '';
       return `
         <div class="empleo-card" onclick="verDetalle(${emp.id})">
           <div class="empleo-card-top">
@@ -695,8 +636,8 @@ function mostrarResultados(empleos, puesto) {
           </div>
           <div class="empleo-tags">
             <span class="tag">📍 ${emp.ubicacion}</span>
-            ${salario}
-            ${badgeGrande}
+            ${emp.salario ? `<span class="tag">💰 ${emp.salario}</span>` : ''}
+            ${emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : ''}
           </div>
         </div>
       `;
@@ -714,9 +655,9 @@ function verDetalle(id) {
 
   const emp = empleoSeleccionado;
   const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
-  const atsAviso = emp.esEmpresaGrande ?
-    '<div class="aviso-ats">🏢 <strong>Empresa grande</strong> — Al adaptar tu CV, la IA lo formatea en estilo ATS/Harvard para pasar los filtros automáticos.</div>' :
-    '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Empresa mediana</strong> — La IA usará un formato moderno y cálido para tu CV.</div>';
+  const atsAviso = emp.esEmpresaGrande
+    ? '<div class="aviso-ats">🏢 <strong>Empresa grande</strong> — La IA generará tu CV en formato ATS/Harvard para pasar filtros automáticos.</div>'
+    : '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Empresa mediana/pyme</strong> — La IA usará un formato moderno y cálido.</div>';
 
   document.getElementById('contenido-detalle').innerHTML = `
     <div class="detalle-header">
@@ -726,32 +667,26 @@ function verDetalle(id) {
       <div class="score-grande ${clase}">${emp.score}%</div>
       <p class="resumen-texto">${emp.analisis?.resumen || 'Activá la IA para ver tu compatibilidad real'}</p>
     </div>
-
     ${atsAviso}
-
     ${emp.analisis?.fortalezas?.length ? `
     <div class="detalle-seccion">
       <h3>✅ Por qué encajás</h3>
       ${emp.analisis.fortalezas.map(f => `<div class="check-item">✓ ${f}</div>`).join('')}
     </div>` : ''}
-
     ${emp.analisis?.debilidades?.length ? `
     <div class="detalle-seccion">
       <h3>⚠️ Lo que te falta</h3>
       ${emp.analisis.debilidades.map(d => `<div class="warn-item">• ${d}</div>`).join('')}
     </div>` : ''}
-
     <div class="detalle-seccion">
       <h3>📄 Descripción del puesto</h3>
       <p style="font-size:13px;color:#cbd5e1;line-height:1.6">${emp.descripcion}</p>
     </div>
-
     <button class="btn-adaptar" onclick="adaptarCV()">
-      📄 Adaptar mi CV a este puesto
+      📄 Adaptar y descargar mi CV
     </button>
-
     <button class="btn-postular" onclick="postularme()">
-      💼 Postularme ahora
+      💼 Postularme en el portal
     </button>
   `;
 
@@ -761,7 +696,7 @@ function verDetalle(id) {
 window.verDetalle = verDetalle;
 
 // ============================================
-// ADAPTAR CV CON IA
+// ADAPTAR CV CON IA + DESCARGA PDF
 // ============================================
 
 async function adaptarCV() {
@@ -774,93 +709,93 @@ async function adaptarCV() {
   document.getElementById('cv-adaptado-contenido').innerHTML = `
     <div class="cargando">
       <span class="spinner">⚙️</span>
-      La IA está generando tu CV profesional...
+      La IA está creando tu CV profesional...<br>
+      <small style="font-size:11px;margin-top:8px;display:block">Esto puede tardar hasta 30 segundos</small>
     </div>
   `;
 
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
   const esGrande = emp.esEmpresaGrande;
 
-  const estudiosTexto = (perfil.estudios || '') === 'primario' ? 'Primario completo' :
-    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
-    (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
-    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
-    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : '';
-
-  const horarioTexto = (perfil.horarios || horarios)
-    .map(h => h === 'cualquier_horario' ? 'Cualquier horario' :
-      h === 'manana' ? 'Turno mañana' :
-      h === 'tarde' ? 'Turno tarde' :
-      h === 'noche' ? 'Turno noche' :
-      h === 'rotativo' ? 'Turno rotativo' : h)
-    .join(', ');
-
-  const formatoInstruccion = esGrande ?
-    `FORMATO REQUERIDO: ATS/Harvard
-- Una sola columna, texto plano
-- Sin tablas, sin colores, sin íconos
-- Palabras clave del puesto bien visibles
+  const formatoInstruccion = esGrande
+    ? `FORMATO: ATS/Harvard (empresa grande usa sistemas automáticos)
+- Una sola columna, texto plano limpio
+- Sin tablas, sin gráficos, sin íconos
+- Palabras clave del puesto visibles en todo el CV
 - Secciones en MAYÚSCULAS
-- Orden: DATOS PERSONALES, OBJETIVO, EXPERIENCIA, HABILIDADES, EDUCACIÓN, DISPONIBILIDAD` :
-    `FORMATO REQUERIDO: Moderno y cercano
-- Lenguaje cálido y profesional
-- Destacar actitud y personalidad
-- Objetivo profesional entusiasta y específico`;
+- Máximo 1 página`
+    : `FORMATO: Moderno y profesional (empresa mediana/pyme)
+- Lenguaje cálido pero profesional
+- Destacar actitud, personalidad y potencial
+- Objetivo profesional entusiasta y específico para ESTA empresa`;
 
-  if (!apiKey) {
-    cvAdaptadoTexto = generarCVbasico(emp, estudiosTexto, horarioTexto);
-    document.getElementById('cv-adaptado-contenido').innerHTML =
-      `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
-    return;
-  }
-
-  const prompt = `Sos un experto en recursos humanos argentino especializado en CVs profesionales.
-Generá un CV adaptado específicamente para este puesto.
+  const prompt = `Sos un experto en recursos humanos argentino y especialista en CVs profesionales.
+Generá un CV adaptado específicamente para este puesto y empresa.
 
 DATOS COMPLETOS DEL CANDIDATO:
 ${construirPerfilTexto()}
 
-PUESTO AL QUE SE POSTULA:
-Título: ${emp.titulo}
-Empresa: ${emp.empresa}
-Descripción: ${emp.descripcion}
+PUESTO: ${emp.titulo}
+EMPRESA: ${emp.empresa}
+DESCRIPCIÓN DEL PUESTO: ${emp.descripcion}
 
 ${formatoInstruccion}
 
-REGLAS CRÍTICAS:
-1. Usá SOLO información real del candidato. NUNCA inventes datos ni fechas.
-2. Si describió tareas en palabras simples, transformalas en lenguaje profesional.
-3. Habilidades técnicas aunque sean por poco tiempo: incluílas como "(conocimiento práctico)"
-4. SIEMPRE incluí los datos de contacto completos al inicio.
-5. Si no tiene experiencia formal: el OBJETIVO debe ser muy potente y específico para este puesto.
-6. Texto plano sin asteriscos ni símbolos decorativos.
-7. Lenguaje argentino profesional.
+REGLAS CRÍTICAS — MUY IMPORTANTE:
+1. Transformá las descripciones simples en lenguaje profesional de RRHH:
+   - "acomodaba el depósito" → "Organización y gestión de inventario en depósito"
+   - "limpiaba" → "Mantenimiento y limpieza de instalaciones según protocolos"
+   - "manejé auto elevador" → "Operación de autoelevador / Clark (conocimiento práctico)"
+   - "controlaba que salga bien" → "Control de calidad del proceso productivo"
+2. Las habilidades DEBEN tener nombres legibles: "Atención al cliente" NO "atencion_cliente"
+3. Si menciona licencias o certificaciones, incluílas aunque estén vencidas: agregar "(a renovar)"
+4. NUNCA inventes datos, empresas ni fechas que no mencionó el candidato
+5. SIEMPRE incluí los datos de contacto completos al inicio
+6. Texto plano sin asteriscos ni ** ni símbolos decorativos
+7. Lenguaje argentino profesional
 
 Generá el CV completo ahora:`;
 
-  try {
-    const cvGenerado = await llamarGemini(prompt, apiKey);
-    if (cvGenerado) {
-      cvAdaptadoTexto = cvGenerado;
-      const badge = esGrande ?
-        '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para sistemas automáticos de grandes empresas.</div>' :
-        '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
-      document.getElementById('cv-adaptado-contenido').innerHTML =
-        badge + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
-      return;
-    }
-  } catch (e) {
-    console.log('Error adaptando CV:', e);
+  if (!apiKey) {
+    const cvBasico = generarCVbasico(emp);
+    cvAdaptadoTexto = cvBasico;
+    document.getElementById('cv-adaptado-contenido').innerHTML = `
+      <div class="aviso-ats" style="border-color:#f97316;background:#1c0a00">
+        ⚠️ <strong>IA no configurada</strong> — Este es un CV básico. Configurá tu API Key de Gemini para obtener un CV profesional adaptado.
+      </div>
+      <div class="cv-adaptado-box">${cvBasico.replace(/\n/g, '<br>')}</div>
+    `;
+    return;
   }
 
-  cvAdaptadoTexto = generarCVbasico(emp, estudiosTexto, horarioTexto);
-  document.getElementById('cv-adaptado-contenido').innerHTML =
-    `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
+  const cvGenerado = await llamarGemini(prompt, apiKey);
+
+  if (cvGenerado) {
+    cvAdaptadoTexto = cvGenerado;
+    const badge = esGrande
+      ? '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para pasar filtros automáticos de empresas grandes.</div>'
+      : '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
+    document.getElementById('cv-adaptado-contenido').innerHTML =
+      badge + `<div class="cv-adaptado-box" id="cv-texto-final">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
+  } else {
+    const cvBasico = generarCVbasico(emp);
+    cvAdaptadoTexto = cvBasico;
+    document.getElementById('cv-adaptado-contenido').innerHTML = `
+      <div class="aviso-ats" style="border-color:#f97316;background:#1c0a00">
+        ⚠️ No se pudo conectar con la IA. Verificá tu API Key.
+      </div>
+      <div class="cv-adaptado-box" id="cv-texto-final">${cvBasico.replace(/\n/g, '<br>')}</div>
+    `;
+  }
 }
 
-function generarCVbasico(emp, estudiosTexto, horarioTexto) {
-  const expTexto = (perfil.experiencia || experiencia) === 'sin_exp' ? 'sin experiencia formal previa' :
-    `con experiencia en ${perfil.expEmpresa || 'el área'}`;
+function generarCVbasico(emp) {
+  const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
+  const estudiosTexto = (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
+    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
+    (perfil.estudios || '') === 'primario' ? 'Primario completo' :
+    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
+    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : 'Formación en proceso';
 
   return `CURRÍCULUM VITAE
 
@@ -874,27 +809,103 @@ ${perfil.ciudad ? `Localidad: ${perfil.ciudad}, Argentina` : 'País: Argentina'}
 OBJETIVO PROFESIONAL
 Me postulo para el puesto de ${emp.titulo} en ${emp.empresa}.
 ${(perfil.experiencia || experiencia) === 'sin_exp'
-  ? 'Me caracterizo por mi responsabilidad, puntualidad y gran predisposición para aprender. Estoy disponible de forma inmediata.'
-  : `Profesional ${expTexto}. Busco nuevos desafíos donde pueda aportar mis conocimientos.`}
+  ? 'Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Disponible de forma inmediata.'
+  : `Profesional con experiencia en ${perfil.expEmpresa || 'el área'}. Busco nuevos desafíos profesionales.`}
 
 EXPERIENCIA LABORAL
-${perfil.expEmpresa ? `Empresa: ${perfil.expEmpresa}
-Tareas: ${perfil.expDetalle || 'Tareas operativas generales'}` : 'Sin experiencia formal. Disponible para capacitación inmediata.'}
-${perfil.infoExtra ? `\nInformación adicional: ${perfil.infoExtra}` : ''}
+${perfil.expEmpresa
+  ? `Empresa: ${perfil.expEmpresa}\nTareas: ${perfil.expDetalle || 'Tareas operativas'}`
+  : 'Sin experiencia formal. Disponible para capacitación inmediata.'}
+${perfil.infoExtra ? `\n${perfil.infoExtra}` : ''}
 
 HABILIDADES Y COMPETENCIAS
-${(perfil.habilidades || habilidades).join(', ') || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
+${habilidadesTexto || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
 
 EDUCACIÓN
-${estudiosTexto || 'Formación en proceso'}
+${estudiosTexto}
 ${perfil.institucion ? `Institución: ${perfil.institucion}` : ''}
 
 DISPONIBILIDAD
-Inmediata
-Horarios: ${horarioTexto}`;
+Inmediata - Cualquier horario`;
 }
 
 window.adaptarCV = adaptarCV;
+
+// ============================================
+// DESCARGAR CV COMO PDF
+// ============================================
+
+async function descargarCV() {
+  if (!cvAdaptadoTexto) {
+    alert('Primero generá tu CV adaptado');
+    return;
+  }
+
+  try {
+    // Usamos la librería jsPDF desde CDN
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Configuración de fuente y márgenes
+    const margenIzq = 20;
+    const margenDer = 20;
+    const anchoUtil = 210 - margenIzq - margenDer;
+    let posY = 20;
+    const lineHeight = 6;
+    const fontSize = 10;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(fontSize);
+
+    // Dividimos el texto en líneas
+    const lineas = cvAdaptadoTexto.split('\n');
+
+    for (const linea of lineas) {
+      if (posY > 270) {
+        doc.addPage();
+        posY = 20;
+      }
+
+      const lineaTrimmed = linea.trim();
+
+      // Títulos de sección en mayúsculas
+      if (lineaTrimmed === lineaTrimmed.toUpperCase() && lineaTrimmed.length > 3 && !lineaTrimmed.includes(':')) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        posY += 3;
+        doc.text(lineaTrimmed, margenIzq, posY);
+        posY += lineHeight + 1;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(fontSize);
+      } else if (lineaTrimmed === '') {
+        posY += 3;
+      } else {
+        // Texto normal con wrap automático
+        const splitTexto = doc.splitTextToSize(lineaTrimmed, anchoUtil);
+        splitTexto.forEach(t => {
+          if (posY > 270) { doc.addPage(); posY = 20; }
+          doc.text(t, margenIzq, posY);
+          posY += lineHeight;
+        });
+      }
+    }
+
+    const nombreArchivo = `CV_${(perfil.nombre || 'candidato').replace(/ /g, '_')}_LabuIA.pdf`;
+    doc.save(nombreArchivo);
+
+  } catch (e) {
+    console.log('Error PDF:', e);
+    // Fallback: copiar al portapapeles
+    copiarCV();
+    alert('No se pudo generar el PDF. El CV fue copiado al portapapeles.');
+  }
+}
+
+window.descargarCV = descargarCV;
 
 // ============================================
 // COPIAR CV
@@ -910,13 +921,12 @@ function copiarCV() {
 window.copiarCV = copiarCV;
 
 // ============================================
-// POSTULACIÓN — ABRE LINK REAL DE JOOBLE
+// POSTULACIÓN
 // ============================================
 
 function postularme() {
   if (!empleoSeleccionado) return;
   guardarPostulacion(empleoSeleccionado);
-  // Abrimos el link REAL de Jooble/empresa (requisito obligatorio de Jooble)
   window.open(empleoSeleccionado.link, '_blank');
 }
 
@@ -928,9 +938,7 @@ function postularmeConCV() {
 
 async function guardarPostulacion(empleo) {
   const postulaciones = JSON.parse(localStorage.getItem('labuia_postulaciones') || '[]');
-  const yaExiste = postulaciones.find(p =>
-    p.titulo === empleo.titulo && p.empresa === empleo.empresa
-  );
+  const yaExiste = postulaciones.find(p => p.titulo === empleo.titulo && p.empresa === empleo.empresa);
   if (!yaExiste) {
     postulaciones.unshift({
       titulo: empleo.titulo,
@@ -943,9 +951,7 @@ async function guardarPostulacion(empleo) {
       link: empleo.link
     });
     localStorage.setItem('labuia_postulaciones', JSON.stringify(postulaciones));
-    if (usuarioActual) {
-      await guardarPerfilFirebase(usuarioActual.uid, { postulaciones });
-    }
+    if (usuarioActual) await guardarPerfilFirebase(usuarioActual.uid, { postulaciones });
   }
 }
 
@@ -960,23 +966,14 @@ function cargarPostulaciones() {
   const lista = JSON.parse(localStorage.getItem('labuia_postulaciones') || '[]');
   if (lista.length === 0) {
     document.getElementById('lista-postulaciones').innerHTML = `
-      <div class="empty-state">
-        <div class="icono">💼</div>
-        <p>Todavía no te postulaste a ningún empleo</p>
-      </div>
+      <div class="empty-state"><div class="icono">💼</div><p>Todavía no te postulaste a ningún empleo</p></div>
     `;
     return;
   }
   document.getElementById('lista-postulaciones').innerHTML = `
     <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-numero">${lista.length}</div>
-        <div class="stat-label">Enviadas</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-numero">${lista.filter(p => p.estado === 'Respuesta').length}</div>
-        <div class="stat-label">Respuestas</div>
-      </div>
+      <div class="stat-card"><div class="stat-numero">${lista.length}</div><div class="stat-label">Enviadas</div></div>
+      <div class="stat-card"><div class="stat-numero">${lista.filter(p => p.estado === 'Respuesta').length}</div><div class="stat-label">Respuestas</div></div>
     </div>
     ${lista.map(p => {
       const clase = p.score >= 75 ? 'score-alto' : p.score >= 50 ? 'score-medio' : 'score-bajo';
