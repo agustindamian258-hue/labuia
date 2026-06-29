@@ -570,3 +570,38 @@ textarea:focus { border-color: #7c3aed; }
 }
 
 .empty-state .icono { font-size: 44px; margin-bottom: 14px; }
+.powered-by {
+  text-align: center;
+  color: #8899aa;
+  font-size: 12px;
+  margin-bottom: 16px;
+  padding: 8px;
+  border: 1px solid #1e3a6e;
+  border-radius: 8px;
+}
+
+.seccion-form {
+  background: #111f3a;
+  border: 1px solid #1e3a6e;
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.seccion-form-titulo {
+  font-size: 14px;
+  font-weight: 700;
+  color: #7c3aed;
+  margin-bottom: 4px;
+}
+
+.aviso-ats {
+  background: #1a1050;
+  border: 1px solid #7c3aed;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin-bottom: 12px;
+                 }
