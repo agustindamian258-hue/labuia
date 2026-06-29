@@ -1,9 +1,16 @@
 // ============================================
-// LABUIA - App principal con Firebase
+// LABUIA - App principal con Firebase + Jooble
 // ============================================
 
 import { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc }
   from './firebase-config.js';
+
+// ============================================
+// CONFIGURACIÓN
+// ============================================
+
+const JOOBLE_API_KEY = '9a26ed6d-5b55-40aa-807f-e5ea117782ca';
+const JOOBLE_API_URL = 'https://jooble.org/api/';
 
 // Estado global
 let perfil = {};
@@ -23,7 +30,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ============================================
-// AUTENTICACIÓN
+// AUTENTICACIÓN - SESIÓN PERSISTENTE
 // ============================================
 
 onAuthStateChanged(auth, async (usuario) => {
@@ -76,6 +83,7 @@ async function cargarPerfilFirebase(uid) {
     const snap = await getDoc(doc(db, 'usuarios', uid));
     if (snap.exists()) {
       const datos = snap.data();
+      perfil = datos;
       if (datos.nombre) document.getElementById('nombre').value = datos.nombre;
       if (datos.edad) document.getElementById('edad').value = datos.edad;
       if (datos.celular) document.getElementById('celular').value = datos.celular;
@@ -85,14 +93,24 @@ async function cargarPerfilFirebase(uid) {
       if (datos.salario) document.getElementById('salario').value = datos.salario;
       if (datos.estudios) document.getElementById('estudios').value = datos.estudios;
       if (datos.institucion) document.getElementById('institucion').value = datos.institucion;
-      if (datos.expEmpresa) document.getElementById('experiencia-empresa').value = datos.expEmpresa;
-      if (datos.expDetalle) document.getElementById('experiencia-detalle').value = datos.expDetalle;
-      if (datos.infoExtra) document.getElementById('info-extra').value = datos.infoExtra;
+      if (datos.expEmpresa) {
+        const el = document.getElementById('experiencia-empresa');
+        if (el) el.value = datos.expEmpresa;
+      }
+      if (datos.expDetalle) {
+        const el = document.getElementById('experiencia-detalle');
+        if (el) el.value = datos.expDetalle;
+      }
+      if (datos.infoExtra) {
+        const el = document.getElementById('info-extra');
+        if (el) el.value = datos.infoExtra;
+      }
       if (datos.cv) cvFinal = datos.cv;
 
       if (datos.geminiKey) {
         localStorage.setItem('labuia_gemini_key', datos.geminiKey);
-        document.getElementById('gemini-key').value = datos.geminiKey;
+        const el = document.getElementById('gemini-key');
+        if (el) el.value = datos.geminiKey;
         const estado = document.getElementById('api-key-estado');
         if (estado) {
           estado.style.cssText = 'background:#052e16;color:#22c55e;border:1px solid #22c55e';
@@ -106,7 +124,8 @@ async function cargarPerfilFirebase(uid) {
         experiencia = datos.experiencia;
         actualizarToggle('experiencia', experiencia);
         if (experiencia !== 'sin_exp') {
-          document.getElementById('zona-experiencia-detalle').classList.remove('oculto');
+          const zona = document.getElementById('zona-experiencia-detalle');
+          if (zona) zona.classList.remove('oculto');
         }
       }
       if (datos.horarios) { horarios = datos.horarios; actualizarToggleCheck(horarios); }
@@ -167,7 +186,7 @@ document.querySelectorAll('.toggle').forEach(btn => {
       actualizarToggle('experiencia', btn.dataset.valor);
       experiencia = btn.dataset.valor;
       const zona = document.getElementById('zona-experiencia-detalle');
-      experiencia === 'sin_exp' ? zona.classList.add('oculto') : zona.classList.remove('oculto');
+      if (zona) experiencia === 'sin_exp' ? zona.classList.add('oculto') : zona.classList.remove('oculto');
     } else {
       document.querySelectorAll('.toggle:not([data-grupo])').forEach(b => b.classList.remove('activo'));
       btn.classList.add('activo');
@@ -190,7 +209,7 @@ document.querySelectorAll('.toggle-check').forEach(btn => {
 });
 
 // ============================================
-// API KEY
+// API KEY GEMINI
 // ============================================
 
 function toggleAPIkey() {
@@ -293,22 +312,11 @@ async function llamarGemini(prompt, apiKey) {
 }
 
 // ============================================
-// CONSTRUIR PERFIL TEXTO COMPLETO
+// CONSTRUIR PERFIL TEXTO
 // ============================================
 
 function construirPerfilTexto() {
-  const nombre = perfil.nombre || 'Candidato';
-  const celular = perfil.celular || '';
-  const email = perfil.emailContacto || '';
-  const ciudad = perfil.ciudad || 'Argentina';
-  const edad = perfil.edad || '';
-  const estudios = perfil.estudios || '';
-  const institucion = perfil.institucion || '';
-  const habilidadesTexto = (perfil.habilidades || []).join(', ');
-  const expEmpresa = perfil.expEmpresa || '';
-  const expDetalle = perfil.expDetalle || '';
-  const infoExtra = perfil.infoExtra || '';
-  const horarioTexto = (perfil.horarios || [])
+  const horarioTexto = (perfil.horarios || horarios)
     .map(h => h === 'cualquier_horario' ? 'Cualquier horario' :
       h === 'manana' ? 'Turno mañana' :
       h === 'tarde' ? 'Turno tarde' :
@@ -316,29 +324,28 @@ function construirPerfilTexto() {
       h === 'rotativo' ? 'Turno rotativo' : h)
     .join(', ');
 
-  const expTexto = experiencia === 'sin_exp' ? 'Sin experiencia laboral previa' :
-    experiencia === 'poca_exp' ? 'Poca experiencia (1-2 años)' :
-    experiencia === 'media_exp' ? 'Experiencia media (3-5 años)' :
+  const expTexto = (perfil.experiencia || experiencia) === 'sin_exp' ? 'Sin experiencia laboral' :
+    (perfil.experiencia || experiencia) === 'poca_exp' ? 'Poca experiencia (1-2 años)' :
+    (perfil.experiencia || experiencia) === 'media_exp' ? 'Experiencia media (3-5 años)' :
     'Experiencia amplia (+5 años)';
 
   return `
-DATOS DE CONTACTO:
-Nombre: ${nombre}
-${edad ? `Edad: ${edad} años` : ''}
-${celular ? `Celular: ${celular}` : ''}
-${email ? `Email: ${email}` : ''}
-Ciudad: ${ciudad}
-
-NIVEL DE EXPERIENCIA: ${expTexto}
-${expEmpresa ? `Empresas donde trabajó: ${expEmpresa}` : ''}
-${expDetalle ? `Descripción de sus tareas: ${expDetalle}` : ''}
-${infoExtra ? `Información adicional: ${infoExtra}` : ''}
-
-ESTUDIOS: ${estudios}${institucion ? ` en ${institucion}` : ''}
-HABILIDADES: ${habilidadesTexto || 'No especificadas'}
-DISPONIBILIDAD: ${horarioTexto}
-MODALIDAD: ${modalidad}
-`.trim();
+Nombre: ${perfil.nombre || ''}
+Edad: ${perfil.edad || 'No especificada'}
+Celular: ${perfil.celular || 'No especificado'}
+Email: ${perfil.emailContacto || 'No especificado'}
+Ciudad: ${perfil.ciudad || 'Argentina'}
+Nivel de experiencia: ${expTexto}
+Empresa(s) donde trabajó: ${perfil.expEmpresa || 'No especificado'}
+Descripción de sus tareas (en sus palabras): ${perfil.expDetalle || 'No especificado'}
+Información adicional: ${perfil.infoExtra || 'No especificado'}
+Estudios: ${perfil.estudios || 'No especificado'}
+Institución educativa: ${perfil.institucion || 'No especificada'}
+Habilidades: ${(perfil.habilidades || habilidades).join(', ') || 'No especificadas'}
+Disponibilidad: ${horarioTexto}
+Modalidad buscada: ${perfil.modalidad || modalidad}
+${cvFinal ? `CV cargado:\n${cvFinal.substring(0, 800)}` : ''}
+  `.trim();
 }
 
 // ============================================
@@ -351,85 +358,70 @@ async function generarCVconIA() {
   preview.textContent = '⏳ Generando CV con IA...';
 
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
-  const perfilTexto = construirPerfilTexto();
   const puesto = perfil.puestoBuscado || document.getElementById('puesto-buscado').value.trim();
 
   const prompt = `Sos un experto en recursos humanos argentino especializado en redactar CVs profesionales.
-Generá un CV profesional en español para esta persona buscando trabajo en Argentina.
+Tu tarea es generar un CV profesional y competitivo.
 
 INFORMACIÓN DEL CANDIDATO:
-${perfilTexto}
+${construirPerfilTexto()}
 PUESTO QUE BUSCA: ${puesto || 'Cualquier empleo'}
 
-INSTRUCCIONES IMPORTANTES:
-- Si trabajó en empresas, deducí el nombre correcto del puesto y describí las tareas de forma profesional
-- Si tiene habilidades como "Manejo de auto-elevador", incluíla como "Manejo de autoelevador / Clark (conocimiento práctico)"
-- Si no tiene experiencia formal, destacá fuertemente las ganas de trabajar, responsabilidad y capacidad de aprendizaje
-- Incluí SIEMPRE los datos de contacto al inicio (nombre, celular, email, ciudad)
-- Escribí en texto plano sin asteriscos ni símbolos raros
-- Usá lenguaje argentino profesional
-- El CV debe verse competitivo y profesional
+INSTRUCCIONES:
+- Si describió sus tareas con palabras simples, transformalas en lenguaje profesional
+- Si tiene habilidades técnicas aunque sea por poco tiempo, incluílas con "(conocimiento práctico)"
+- Si no tiene experiencia formal, destacá fuertemente las ganas de trabajar y capacidad de aprendizaje
+- Incluí SIEMPRE los datos de contacto completos al inicio
+- Texto plano sin asteriscos ni símbolos raros
+- Lenguaje argentino profesional
 
-FORMATO DEL CV:
-DATOS PERSONALES Y CONTACTO
-OBJETIVO PROFESIONAL (específico para el puesto buscado)
-EXPERIENCIA LABORAL (con tareas detalladas y profesionales)
-HABILIDADES Y COMPETENCIAS
-EDUCACIÓN
-DISPONIBILIDAD`;
+SECCIONES: DATOS PERSONALES Y CONTACTO, OBJETIVO PROFESIONAL, EXPERIENCIA LABORAL, HABILIDADES Y COMPETENCIAS, EDUCACIÓN, DISPONIBILIDAD`;
 
   if (apiKey) {
     const texto = await llamarGemini(prompt, apiKey);
     if (texto) {
       cvFinal = texto;
       preview.textContent = texto;
+      if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
       return;
     }
   }
 
   // CV local sin IA
-  const nombre = perfil.nombre || document.getElementById('nombre').value.trim() || 'Candidato';
-  const celular = perfil.celular || document.getElementById('celular').value.trim();
-  const emailC = perfil.emailContacto || document.getElementById('email-contacto').value.trim();
-  const ciudad = perfil.ciudad || document.getElementById('ciudad').value.trim();
-  const estudiosVal = perfil.estudios || document.getElementById('estudios').value;
-  const expEmpresa = document.getElementById('experiencia-empresa')?.value.trim() || '';
-  const expDetalle = document.getElementById('experiencia-detalle')?.value.trim() || '';
-  const habilidadesTexto = habilidades.join(', ');
+  const estudiosTexto = (perfil.estudios || '') === 'primario' ? 'Primario completo' :
+    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
+    (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
+    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
+    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : 'Formación en proceso';
 
   cvFinal = `CURRÍCULUM VITAE
 
 DATOS PERSONALES Y CONTACTO
-Nombre: ${nombre}
-${celular ? `Celular: ${celular}` : ''}
-${emailC ? `Email: ${emailC}` : ''}
-${ciudad ? `Localidad: ${ciudad}` : ''}
-País: Argentina
+Nombre: ${perfil.nombre || ''}
+${perfil.edad ? `Edad: ${perfil.edad} años` : ''}
+${perfil.celular ? `Celular: ${perfil.celular}` : ''}
+${perfil.emailContacto ? `Email: ${perfil.emailContacto}` : ''}
+${perfil.ciudad ? `Localidad: ${perfil.ciudad}, Argentina` : 'País: Argentina'}
 
 OBJETIVO PROFESIONAL
-${experiencia === 'sin_exp'
-  ? `Joven con muchas ganas de incorporarme al mundo laboral. Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Busco mi primera oportunidad en ${puesto || 'el área que me permita crecer profesionalmente'}.`
-  : `Profesional con experiencia en ${expEmpresa || 'el área'}. Busco nuevas oportunidades en ${puesto || 'mi especialidad'} donde pueda seguir creciendo.`}
+${(perfil.experiencia || experiencia) === 'sin_exp'
+  ? `Joven con muchas ganas de incorporarme al mundo laboral. Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Busco mi primera oportunidad en ${puesto || 'el área que me permita crecer'}.`
+  : `Profesional con experiencia en ${perfil.expEmpresa || 'el área'}. Busco nuevas oportunidades en ${puesto || 'mi especialidad'}.`}
 
 EXPERIENCIA LABORAL
-${expEmpresa ? `Empresa: ${expEmpresa}
-Tareas: ${expDetalle || 'Tareas operativas y de producción'}` : 
-(experiencia === 'sin_exp' ? 'Sin experiencia laboral formal previa. Disponible para capacitación inmediata a cargo de la empresa.' : expDetalle || 'Experiencia en el área')}
+${perfil.expEmpresa ? `Empresa: ${perfil.expEmpresa}
+Tareas: ${perfil.expDetalle || 'Tareas operativas'}` : 'Sin experiencia formal previa. Disponible para capacitación.'}
+${perfil.infoExtra ? `\nInformación adicional: ${perfil.infoExtra}` : ''}
 
 HABILIDADES Y COMPETENCIAS
-${habilidadesTexto || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad, predisposición para aprender'}
+${(perfil.habilidades || habilidades).join(', ') || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
 
 EDUCACIÓN
-${estudiosVal === 'primario' ? 'Primario completo' :
-  estudiosVal === 'secundario_inc' ? 'Secundario incompleto' :
-  estudiosVal === 'secundario' ? 'Secundario completo' :
-  estudiosVal === 'terciario' ? 'Estudios terciarios en curso' :
-  estudiosVal === 'universitario' ? 'Universitario completo' : 'Formación en proceso'}
+${estudiosTexto}
+${perfil.institucion ? `Institución: ${perfil.institucion}` : ''}
 
 DISPONIBILIDAD
-Inmediata - ${horarios.includes('cualquier_horario') ? 'Cualquier horario' :
-  horarios.map(h => h === 'manana' ? 'Turno mañana' : h === 'tarde' ? 'Turno tarde' :
-  h === 'noche' ? 'Turno noche' : h === 'rotativo' ? 'Turno rotativo' : h).join(', ')}`;
+Inmediata`;
 
   preview.textContent = cvFinal;
 }
@@ -452,7 +444,7 @@ async function guardarPerfilYBuscar() {
   const institucion = document.getElementById('institucion').value.trim();
   const expEmpresa = document.getElementById('experiencia-empresa')?.value.trim() || '';
   const expDetalle = document.getElementById('experiencia-detalle')?.value.trim() || '';
-  const infoExtra = document.getElementById('info-extra').value.trim();
+  const infoExtra = document.getElementById('info-extra')?.value.trim() || '';
 
   if (!puesto) { alert('Escribí qué tipo de trabajo buscás'); return; }
   if (!ciudad) { alert('Escribí en qué ciudad o zona vivís'); return; }
@@ -474,236 +466,137 @@ async function guardarPerfilYBuscar() {
   }
 
   irA('pantalla-resultados');
-  buscarEmpleos(puesto, ciudad, cvFinal);
+  buscarEmpleos(puesto, ciudad);
 }
 
 window.guardarPerfilYBuscar = guardarPerfilYBuscar;
 
 // ============================================
-// BUSCAR EMPLEOS
+// BUSCAR EMPLEOS CON JOOBLE
 // ============================================
 
-async function buscarEmpleos(puesto, ciudad, cv) {
+async function buscarEmpleos(puesto, ciudad) {
   document.getElementById('titulo-resultados').textContent = 'Buscando empleos...';
   document.getElementById('subtitulo-resultados').textContent = 'Buscando en portales argentinos...';
   document.getElementById('lista-empleos').innerHTML = `
     <div class="cargando">
       <span class="spinner">⚙️</span>
-      Buscando empleos en Argentina...
+      Buscando empleos reales en Argentina...
     </div>
   `;
 
   try {
-    const empleos = await obtenerEmpleos(puesto, ciudad);
+    const empleos = await obtenerEmpleosJooble(puesto, ciudad);
     const analizados = await analizarConIA(empleos, puesto);
     empleosActuales = analizados.sort((a, b) => b.score - a.score);
     mostrarResultados(empleosActuales, puesto);
-  } catch {
+  } catch (e) {
+    console.log('Error:', e);
     document.getElementById('lista-empleos').innerHTML =
-      '<div class="cargando">❌ Error al buscar. Revisá tu conexión.</div>';
+      '<div class="cargando">❌ Error al buscar. Revisá tu conexión e intentá de nuevo.</div>';
   }
 }
 
 // ============================================
-// OBTENER EMPLEOS ARGENTINOS
+// API JOOBLE - EMPLEOS REALES
 // ============================================
 
-async function obtenerEmpleos(puesto, ciudad) {
-  if (modalidad === 'remoto') {
-    try {
-      const res = await fetch(
-        `https://remotive.com/api/remote-jobs?search=${encodeURIComponent(puesto)}&limit=10`
-      );
-      const data = await res.json();
-      if (data.jobs && data.jobs.length > 0) {
-        return data.jobs.slice(0, 10).map((job, i) => ({
-          id: i + 1,
-          titulo: job.title,
-          empresa: job.company_name,
-          ubicacion: 'Remoto desde Argentina',
-          descripcion: (job.description || '').replace(/<[^>]*>/g, '').substring(0, 500),
-          link: job.url,
-          fuente: 'Remotive',
-          esEmpresaGrande: false,
-          score: 0,
-          analisis: null
-        }));
-      }
-    } catch {}
+async function obtenerEmpleosJooble(puesto, ciudad) {
+  try {
+    const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(
+      `${JOOBLE_API_URL}${JOOBLE_API_KEY}`
+    )}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        keywords: puesto,
+        location: ciudad || 'Argentina',
+        country: 'ar',
+        page: 1,
+        resultsOnPage: 20
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.jobs && data.jobs.length > 0) {
+      return data.jobs.slice(0, 15).map((job, i) => ({
+        id: i + 1,
+        titulo: job.title || puesto,
+        empresa: job.company || 'Empresa confidencial',
+        ubicacion: job.location || ciudad || 'Argentina',
+        descripcion: (job.snippet || '').replace(/<[^>]*>/g, '').substring(0, 600),
+        link: job.link,
+        salario: job.salary || '',
+        fuente: 'Jooble',
+        esEmpresaGrande: detectarEmpresaGrande(job.company || ''),
+        score: 0,
+        analisis: null
+      }));
+    }
+  } catch (e) {
+    console.log('Error Jooble:', e);
   }
-  return generarEmpleosArgentinos(puesto, ciudad);
+
+  // Si Jooble falla, usamos empleos de respaldo
+  return generarEmpleosRespaldo(puesto, ciudad);
 }
 
-function generarEmpleosArgentinos(puesto, ciudad) {
+function detectarEmpresaGrande(nombre) {
+  const grandes = ['arcor', 'carrefour', 'mercado libre', 'mercadolibre', 'banco',
+    'galicia', 'santander', 'bbva', 'hsbc', 'quilmes', 'pepsico', 'unilever',
+    'walmart', 'coto', 'jumbo', 'dia', 'molinos', 'bimbo', 'kraft', 'danone',
+    'coca-cola', 'personal', 'claro', 'movistar', 'telecom', 'despegar',
+    'globant', 'mercadopago', 'pedidosya', 'rappi'];
+  const nombreLower = nombre.toLowerCase();
+  return grandes.some(g => nombreLower.includes(g));
+}
+
+function generarEmpleosRespaldo(puesto, ciudad) {
   const zona = ciudad || 'Buenos Aires';
   const puestoLower = puesto.toLowerCase();
-
-  const empresasGrandes = ['arcor', 'carrefour', 'coto', 'jumbo', 'walmart', 'pepsico',
-    'unilever', 'quilmes', 'molinos', 'mercado libre', 'banco galicia', 'santander'];
-
-  const empleosPorRubro = {
+  const empresas = {
     repositor: [
-      { empresa: 'Carrefour Argentina', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-repositor.html', grande: true },
-      { empresa: 'Supermercados DIA', extra: 'Turno tarde', link: 'https://www.bumeran.com.ar/empleos-repositor.html', grande: true },
-      { empresa: 'Coto CICSA', extra: 'Turno rotativo', link: 'https://www.computrabajo.com.ar/trabajo-de-repositor', grande: true },
-      { empresa: 'Jumbo Argentina', extra: 'Part time', link: 'https://www.zonajobs.com.ar/empleos-de-repositor.html', grande: true },
-      { empresa: 'La Anónima', extra: 'Full time', link: 'https://www.bumeran.com.ar/empleos-repositor.html', grande: false },
-      { empresa: 'Walmart Argentina', extra: 'Ingreso inmediato', link: 'https://www.computrabajo.com.ar/trabajo-de-repositor', grande: true },
-      { empresa: 'Disco Vea', extra: 'Turno mañana o tarde', link: 'https://www.bumeran.com.ar/empleos-repositor.html', grande: true },
-      { empresa: 'Supermercado Toledo', extra: 'Con y sin experiencia', link: 'https://www.computrabajo.com.ar/trabajo-de-repositor', grande: false },
-      { empresa: 'El Super', extra: 'Zona Norte GBA', link: 'https://www.zonajobs.com.ar/empleos-de-repositor.html', grande: false },
-      { empresa: 'Changomas', extra: 'Turno rotativo', link: 'https://www.bumeran.com.ar/empleos-repositor.html', grande: true },
-      { empresa: 'Makro Argentina', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-repositor', grande: true },
-      { empresa: 'Supermercado Nini', extra: 'Zona Norte', link: 'https://www.zonajobs.com.ar/empleos-de-repositor.html', grande: false },
-    ],
-    cajero: [
-      { empresa: 'Carrefour Argentina', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-cajero.html', grande: true },
-      { empresa: 'Farmacity', extra: 'Part time', link: 'https://www.bumeran.com.ar/empleos-cajero.html', grande: true },
-      { empresa: 'Coto CICSA', extra: 'Turno rotativo', link: 'https://www.zonajobs.com.ar/empleos-de-cajero.html', grande: true },
-      { empresa: 'Supermercados DIA', extra: 'Ingreso inmediato', link: 'https://www.bumeran.com.ar/empleos-cajero.html', grande: true },
-      { empresa: 'Rapipago', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-cajero', grande: false },
-      { empresa: 'Pago Fácil', extra: 'Turno tarde', link: 'https://www.bumeran.com.ar/empleos-cajero.html', grande: false },
-      { empresa: 'Jumbo Argentina', extra: 'Turno mañana', link: 'https://www.computrabajo.com.ar/trabajo-de-cajero', grande: true },
-      { empresa: 'Walmart Argentina', extra: 'Turno rotativo', link: 'https://www.zonajobs.com.ar/empleos-de-cajero.html', grande: true },
-      { empresa: 'Changomas', extra: 'Part time', link: 'https://www.bumeran.com.ar/empleos-cajero.html', grande: true },
-      { empresa: 'Dr. Ahorro', extra: 'Con o sin experiencia', link: 'https://www.computrabajo.com.ar/trabajo-de-cajero', grande: false },
+      { empresa: 'Carrefour Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
+      { empresa: 'Supermercados DIA', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
+      { empresa: 'Coto CICSA', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
+      { empresa: 'Jumbo Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
+      { empresa: 'Walmart Argentina', link: 'https://ar.jooble.org/trabajos-repositor/Argentina' },
     ],
     operario: [
-      { empresa: 'Arcor', extra: 'Turno rotativo', link: 'https://www.bumeran.com.ar/empleos-operario.html', grande: true },
-      { empresa: 'Molinos Río de la Plata', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-operario', grande: true },
-      { empresa: 'Quilmes', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-operario.html', grande: true },
-      { empresa: 'Pepsico Argentina', extra: 'Relación de dependencia', link: 'https://www.zonajobs.com.ar/empleos-de-operario.html', grande: true },
-      { empresa: 'Unilever Argentina', extra: 'Turno tarde', link: 'https://www.bumeran.com.ar/empleos-operario.html', grande: true },
-      { empresa: 'Adecco Argentina', extra: 'Eventual con posibilidad de pase', link: 'https://www.computrabajo.com.ar/trabajo-de-operario', grande: false },
-      { empresa: 'Manpower Argentina', extra: 'Múltiples turnos', link: 'https://www.bumeran.com.ar/empleos-operario.html', grande: false },
-      { empresa: 'CCU Argentina', extra: 'Turno rotativo', link: 'https://www.computrabajo.com.ar/trabajo-de-operario', grande: true },
-      { empresa: 'Kraft Heinz Argentina', extra: 'Full time', link: 'https://www.zonajobs.com.ar/empleos-de-operario.html', grande: true },
-      { empresa: 'Bimbo Argentina', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-operario.html', grande: true },
-      { empresa: 'Georgalos', extra: 'Con y sin experiencia', link: 'https://www.computrabajo.com.ar/trabajo-de-operario', grande: false },
-      { empresa: 'Bayton Grupo Empresarial', extra: 'Ingreso inmediato', link: 'https://www.zonajobs.com.ar/empleos-de-operario.html', grande: false },
+      { empresa: 'Arcor', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
+      { empresa: 'Molinos Río de la Plata', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
+      { empresa: 'Quilmes', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
+      { empresa: 'Pepsico Argentina', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
+      { empresa: 'CCU Argentina', link: 'https://ar.jooble.org/trabajos-operario/Argentina' },
     ],
-    limpieza: [
-      { empresa: 'Sodexo Argentina', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-limpieza.html', grande: true },
-      { empresa: 'ISS Argentina', extra: 'Part time', link: 'https://www.computrabajo.com.ar/trabajo-de-limpieza', grande: true },
-      { empresa: 'Compass Group', extra: 'Turno tarde', link: 'https://www.bumeran.com.ar/empleos-limpieza.html', grande: true },
-      { empresa: 'Limpiolux', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-limpieza', grande: false },
-      { empresa: 'Grupo Soluciones', extra: 'Zona Norte GBA', link: 'https://www.zonajobs.com.ar/empleos-de-limpieza.html', grande: false },
-      { empresa: 'Cintas Corporation', extra: 'Relación de dependencia', link: 'https://www.bumeran.com.ar/empleos-limpieza.html', grande: true },
-      { empresa: 'Securitas Argentina', extra: 'Con beneficios', link: 'https://www.computrabajo.com.ar/trabajo-de-limpieza', grande: true },
-      { empresa: 'Absa Ambiental', extra: 'Turno rotativo', link: 'https://www.zonajobs.com.ar/empleos-de-limpieza.html', grande: false },
-    ],
-    seguridad: [
-      { empresa: 'Securitas Argentina', extra: 'Turno rotativo', link: 'https://www.bumeran.com.ar/empleos-seguridad.html', grande: true },
-      { empresa: 'G4S Argentina', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-seguridad', grande: true },
-      { empresa: 'Prosegur Argentina', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-seguridad.html', grande: true },
-      { empresa: 'Brinks Argentina', extra: 'Relación de dependencia', link: 'https://www.zonajobs.com.ar/empleos-de-seguridad.html', grande: true },
-      { empresa: 'Omint', extra: 'Zona Norte', link: 'https://www.bumeran.com.ar/empleos-seguridad.html', grande: false },
-      { empresa: 'Vigencia SA', extra: 'Turno noche', link: 'https://www.computrabajo.com.ar/trabajo-de-seguridad', grande: false },
-    ],
-    mozo: [
-      { empresa: 'TGI Fridays Argentina', extra: 'Part time', link: 'https://www.bumeran.com.ar/empleos-mozo.html', grande: false },
-      { empresa: 'Grupo Pegasso', extra: 'Turno noche', link: 'https://www.computrabajo.com.ar/trabajo-de-mozo', grande: false },
-      { empresa: 'Mostaza', extra: 'Full time', link: 'https://www.bumeran.com.ar/empleos-mozo.html', grande: false },
-      { empresa: 'McDonald\'s Argentina', extra: 'Part time', link: 'https://www.computrabajo.com.ar/trabajo-de-mozo', grande: true },
-      { empresa: 'Burguer King Argentina', extra: 'Turno tarde-noche', link: 'https://www.zonajobs.com.ar/empleos-de-mozo.html', grande: true },
-      { empresa: 'Freddo', extra: 'Temporada', link: 'https://www.bumeran.com.ar/empleos-mozo.html', grande: false },
-      { empresa: 'Café Martínez', extra: 'Part time', link: 'https://www.computrabajo.com.ar/trabajo-de-mozo', grande: false },
-      { empresa: 'Subway Argentina', extra: 'Flexible', link: 'https://www.zonajobs.com.ar/empleos-de-mozo.html', grande: false },
-    ],
-    delivery: [
-      { empresa: 'PedidosYa', extra: 'Flexible', link: 'https://www.bumeran.com.ar/empleos-delivery.html', grande: true },
-      { empresa: 'Rappi Argentina', extra: 'Por horas', link: 'https://www.computrabajo.com.ar/trabajo-de-delivery', grande: true },
-      { empresa: 'Glovo Argentina', extra: 'Turno libre', link: 'https://www.bumeran.com.ar/empleos-delivery.html', grande: true },
-      { empresa: 'Mercado Envíos', extra: 'Relación de dependencia', link: 'https://www.zonajobs.com.ar/empleos-de-delivery.html', grande: true },
-      { empresa: 'Andreani', extra: 'Full time', link: 'https://www.bumeran.com.ar/empleos-delivery.html', grande: true },
-      { empresa: 'OCA Argentina', extra: 'Turno mañana', link: 'https://www.computrabajo.com.ar/trabajo-de-delivery', grande: true },
-    ],
-    chofer: [
-      { empresa: 'Mercado Envíos', extra: 'Full time', link: 'https://www.bumeran.com.ar/empleos-chofer.html', grande: true },
-      { empresa: 'DHL Argentina', extra: 'Turno mañana', link: 'https://www.computrabajo.com.ar/trabajo-de-chofer', grande: true },
-      { empresa: 'Andreani', extra: 'Relación de dependencia', link: 'https://www.bumeran.com.ar/empleos-chofer.html', grande: true },
-      { empresa: 'OCA Argentina', extra: 'Full time', link: 'https://www.zonajobs.com.ar/empleos-de-chofer.html', grande: true },
-      { empresa: 'Rapipago', extra: 'Zona Norte GBA', link: 'https://www.bumeran.com.ar/empleos-chofer.html', grande: false },
-      { empresa: 'Logística 3PL', extra: 'Con experiencia', link: 'https://www.computrabajo.com.ar/trabajo-de-chofer', grande: false },
-    ],
-    administrativo: [
-      { empresa: 'Adecco Argentina', extra: 'Full time', link: 'https://www.bumeran.com.ar/empleos-administrativo.html', grande: false },
-      { empresa: 'Manpower Argentina', extra: 'Relación de dependencia', link: 'https://www.computrabajo.com.ar/trabajo-de-administrativo', grande: false },
-      { empresa: 'Banco Galicia', extra: 'Con beneficios', link: 'https://www.zonajobs.com.ar/empleos-de-administrativo.html', grande: true },
-      { empresa: 'OSDE', extra: 'Turno mañana', link: 'https://www.bumeran.com.ar/empleos-administrativo.html', grande: true },
-      { empresa: 'Telecom Argentina', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-administrativo', grande: true },
-      { empresa: 'Grupo Clarín', extra: 'Híbrido', link: 'https://www.zonajobs.com.ar/empleos-de-administrativo.html', grande: true },
-    ],
-    vendedor: [
-      { empresa: 'Frávega', extra: 'Comisiones', link: 'https://www.bumeran.com.ar/empleos-vendedor.html', grande: true },
-      { empresa: 'Garbarino', extra: 'Full time + comisiones', link: 'https://www.computrabajo.com.ar/trabajo-de-vendedor', grande: true },
-      { empresa: 'Personal (Telecom)', extra: 'Turno rotativo', link: 'https://www.bumeran.com.ar/empleos-vendedor.html', grande: true },
-      { empresa: 'Claro Argentina', extra: 'Con comisiones', link: 'https://www.zonajobs.com.ar/empleos-de-vendedor.html', grande: true },
-      { empresa: 'Movistar Argentina', extra: 'Relación de dependencia', link: 'https://www.bumeran.com.ar/empleos-vendedor.html', grande: true },
-      { empresa: 'Red Link', extra: 'Full time', link: 'https://www.computrabajo.com.ar/trabajo-de-vendedor', grande: false },
+    cajero: [
+      { empresa: 'Carrefour Argentina', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
+      { empresa: 'Farmacity', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
+      { empresa: 'Coto CICSA', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
+      { empresa: 'Rapipago', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
+      { empresa: 'Pago Fácil', link: 'https://ar.jooble.org/trabajos-cajero/Argentina' },
     ],
     default: [
-      { empresa: 'Adecco Argentina', extra: 'Múltiples turnos', link: `https://www.bumeran.com.ar/empleos-${puestoLower.replace(/ /g,'-')}.html`, grande: false },
-      { empresa: 'Manpower Argentina', extra: 'Ingreso inmediato', link: `https://www.computrabajo.com.ar/trabajo-de-${puestoLower.replace(/ /g,'-')}`, grande: false },
-      { empresa: 'Randstad Argentina', extra: 'Relación de dependencia', link: `https://www.zonajobs.com.ar/empleos-de-${puestoLower.replace(/ /g,'-')}.html`, grande: false },
-      { empresa: 'Kelly Services Argentina', extra: 'Full time', link: `https://www.bumeran.com.ar/empleos-${puestoLower.replace(/ /g,'-')}.html`, grande: false },
-      { empresa: 'Grupo Gestión', extra: 'Turno rotativo', link: `https://www.computrabajo.com.ar/trabajo-de-${puestoLower.replace(/ /g,'-')}`, grande: false },
-      { empresa: 'Bayton Grupo Empresarial', extra: 'Con y sin experiencia', link: `https://www.bumeran.com.ar/empleos-${puestoLower.replace(/ /g,'-')}.html`, grande: false },
-      { empresa: 'Puntual RRHH', extra: 'Zona Norte GBA', link: `https://www.computrabajo.com.ar/trabajo-de-${puestoLower.replace(/ /g,'-')}`, grande: false },
-      { empresa: 'Personal eventual', extra: 'Urgente', link: `https://www.zonajobs.com.ar/empleos-de-${puestoLower.replace(/ /g,'-')}.html`, grande: false },
+      { empresa: 'Adecco Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
+      { empresa: 'Manpower Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
+      { empresa: 'Randstad Argentina', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
+      { empresa: 'Kelly Services', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
+      { empresa: 'Bayton RRHH', link: `https://ar.jooble.org/trabajos-${puestoLower.replace(/ /g,'-')}/Argentina` },
     ]
   };
 
-  const descripcionesPorRubro = {
-    repositor: `Buscamos repositor/a para incorporarse a nuestro equipo.
-Tareas: reposición de mercadería en góndola, control de stock, mantenimiento del orden y limpieza del sector, recepción y verificación de mercadería, rotación de productos.
-Requisitos: secundario completo (excluyente), disponibilidad horaria, responsabilidad y proactividad.
-No se requiere experiencia previa. Capacitación completa a cargo de la empresa.
-Ofrecemos: sueldo según convenio + adicionales, obra social, bonos por presentismo y asistencia perfecta.`,
-
-    cajero: `Incorporamos cajero/a para nuestras sucursales.
-Tareas: atención al cliente en caja, cobro en efectivo y tarjetas, manejo de terminales POS, cierre y apertura de caja, mantenimiento del orden en el sector.
-Requisitos: secundario completo, habilidades numéricas básicas, trato amable con el público, responsabilidad en el manejo de dinero.
-No se requiere experiencia previa. Capacitación incluida.
-Ofrecemos: sueldo según convenio + bonos, obra social de primer nivel.`,
-
-    operario: `Incorporamos operarios/as de producción para nuestras plantas.
-Tareas: operación y control de maquinaria, control de calidad del producto, mantenimiento del orden y limpieza del sector, cumplimiento de normas de seguridad e higiene, trabajo en línea de producción.
-Requisitos: secundario completo, disponibilidad para trabajo en turnos rotativos, responsabilidad y compromiso.
-Se valorará experiencia previa aunque no es excluyente.
-Ofrecemos: sueldo según convenio + horas extra, obra social, comedor en planta, ropa de trabajo, posibilidades de crecimiento.`,
-
-    limpieza: `Buscamos personal de limpieza y mantenimiento para diferentes clientes.
-Tareas: limpieza y desinfección de instalaciones, mantenimiento del orden, uso correcto de productos de limpieza profesionales, reporte al supervisor de área.
-Requisitos: buena predisposición, responsabilidad, puntualidad.
-No se requiere experiencia previa.
-Ofrecemos: sueldo según convenio de maestranza, obra social.`,
-
-    seguridad: `Incorporamos agentes de seguridad privada.
-Tareas: control de accesos, vigilancia de instalaciones, atención al público, reporte de incidentes.
-Requisitos: secundario completo, preferentemente con curso de vigilador (no excluyente). Disponibilidad horaria.
-Ofrecemos: sueldo según convenio + adicionales nocturnos, obra social.`,
-
-    default: `Buscamos personal para incorporarse a nuestro equipo de trabajo.
-Tareas acordes al puesto de ${puesto}.
-Requisitos: buena predisposición, responsabilidad, puntualidad y ganas de trabajar.
-Se valora experiencia previa aunque no es excluyente. Capacitación a cargo de la empresa.
-Ofrecemos: sueldo según convenio, obra social, posibilidades de crecimiento.`
-  };
-
-  const claveRubro = Object.keys(empleosPorRubro).find(k => puestoLower.includes(k)) || 'default';
-  const listaEmpresas = empleosPorRubro[claveRubro];
-  const descripcion = descripcionesPorRubro[claveRubro] || descripcionesPorRubro.default;
-
-  return listaEmpresas.map((emp, i) => ({
+  const clave = Object.keys(empresas).find(k => puestoLower.includes(k)) || 'default';
+  return empresas[clave].map((emp, i) => ({
     id: i + 1,
-    titulo: `${puesto} - ${emp.extra}`,
+    titulo: puesto,
     empresa: emp.empresa,
     ubicacion: `${zona}, Argentina`,
-    descripcion: descripcion,
+    descripcion: `Oferta de ${puesto} en ${emp.empresa}. Hacé clic en "Postularme" para ver los detalles completos y aplicar directamente en el portal de empleos.`,
     link: emp.link,
-    fuente: 'Bumeran/Computrabajo',
-    esEmpresaGrande: emp.grande,
+    salario: '',
+    fuente: 'Jooble',
+    esEmpresaGrande: detectarEmpresaGrande(emp.empresa),
     score: 0,
     analisis: null
   }));
@@ -723,12 +616,12 @@ async function analizarConIA(empleos, puesto) {
       score: Math.max(88 - (i * 4), 50),
       analisis: {
         fortalezas: [
-          'Oferta disponible en tu zona',
+          'Empleo real encontrado en Argentina',
           'El puesto coincide con tu búsqueda',
-          'Activá la IA Gemini para ver análisis real'
+          'Activá la IA Gemini para ver análisis de compatibilidad real'
         ],
         debilidades: ['Configurá tu API Key en "Activar IA real" para análisis detallado'],
-        resumen: 'Score estimado. Activá la IA para ver tu compatibilidad real con este puesto.'
+        resumen: 'Score estimado. Activá la IA para ver tu compatibilidad real.'
       }
     }));
   }
@@ -736,10 +629,10 @@ async function analizarConIA(empleos, puesto) {
   const resultado = [];
   for (const empleo of empleos) {
     try {
-      const prompt = `Sos un experto en RRHH argentino especializado en perfiles operativos y trabajadores sin experiencia.
-Analizá la compatibilidad entre este perfil y esta oferta de trabajo argentina.
+      const prompt = `Sos un experto en RRHH argentino.
+Analizá la compatibilidad entre este perfil y esta oferta real de trabajo.
 
-PERFIL DEL CANDIDATO:
+PERFIL:
 ${perfilTexto}
 
 OFERTA:
@@ -748,19 +641,18 @@ Empresa: ${empleo.empresa}
 Ubicación: ${empleo.ubicacion}
 Descripción: ${empleo.descripcion.substring(0, 400)}
 
-REGLAS IMPORTANTES:
-- Si el puesto no requiere experiencia y el candidato no tiene → score entre 70 y 85
-- Si tiene habilidades que coinciden con el puesto → sumá 10-15 puntos
-- Si la empresa es grande y tiene sistemas ATS → mencionalo como ventaja si el CV está bien estructurado
-- Si el candidato describe tareas con sus propias palabras, valorá eso positivamente
-- Sé específico y útil en las fortalezas y debilidades
+REGLAS:
+- Si el puesto no requiere experiencia y el candidato no tiene → score 70-85
+- Si tiene habilidades que coinciden → sumá puntos
+- Si describió experiencia relevante → valoralo aunque esté en sus palabras
+- Sé específico y útil
 
-Respondé ÚNICAMENTE con este JSON, sin texto extra:
+Respondé SOLO con este JSON:
 {
   "score": numero del 1 al 100,
-  "fortalezas": ["razón específica 1", "razón específica 2", "razón específica 3"],
-  "debilidades": ["punto concreto 1", "punto concreto 2"],
-  "resumen": "Una oración clara en español rioplatense explicando la compatibilidad"
+  "fortalezas": ["razón 1", "razón 2", "razón 3"],
+  "debilidades": ["punto 1", "punto 2"],
+  "resumen": "Una oración en español rioplatense"
 }`;
 
       const texto = await llamarGemini(prompt, apiKey);
@@ -784,27 +676,32 @@ Respondé ÚNICAMENTE con este JSON, sin texto extra:
 function mostrarResultados(empleos, puesto) {
   document.getElementById('titulo-resultados').textContent = 'Empleos para vos';
   document.getElementById('subtitulo-resultados').textContent =
-    `${empleos.length} ofertas encontradas para "${puesto}"`;
+    `${empleos.length} ofertas reales encontradas para "${puesto}"`;
 
-  document.getElementById('lista-empleos').innerHTML = empleos.map(emp => {
-    const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
-    const badgeGrande = emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : '';
-    return `
-      <div class="empleo-card" onclick="verDetalle(${emp.id})">
-        <div class="empleo-card-top">
-          <div class="empleo-info">
-            <div class="empleo-titulo">${emp.titulo}</div>
-            <div class="empleo-empresa">${emp.empresa}</div>
+  document.getElementById('lista-empleos').innerHTML = `
+    <div class="powered-by">🔍 Empleos provistos por <strong>Jooble</strong></div>
+    ${empleos.map(emp => {
+      const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
+      const badgeGrande = emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : '';
+      const salario = emp.salario ? `<span class="tag">💰 ${emp.salario}</span>` : '';
+      return `
+        <div class="empleo-card" onclick="verDetalle(${emp.id})">
+          <div class="empleo-card-top">
+            <div class="empleo-info">
+              <div class="empleo-titulo">${emp.titulo}</div>
+              <div class="empleo-empresa">${emp.empresa}</div>
+            </div>
+            <div class="score-circulo ${clase}">${emp.score}%</div>
           </div>
-          <div class="score-circulo ${clase}">${emp.score}%</div>
+          <div class="empleo-tags">
+            <span class="tag">📍 ${emp.ubicacion}</span>
+            ${salario}
+            ${badgeGrande}
+          </div>
         </div>
-        <div class="empleo-tags">
-          <span class="tag">📍 ${emp.ubicacion}</span>
-          ${badgeGrande}
-        </div>
-      </div>
-    `;
-  }).join('');
+      `;
+    }).join('')}
+  `;
 }
 
 // ============================================
@@ -817,15 +714,15 @@ function verDetalle(id) {
 
   const emp = empleoSeleccionado;
   const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
-  const atsAviso = emp.esEmpresaGrande ? `
-    <div class="aviso-ats">
-      🏢 <strong>Empresa grande</strong> — Al adaptar tu CV, la IA lo formatea en estilo Harvard/ATS para pasar los filtros automáticos de selección.
-    </div>` : '';
+  const atsAviso = emp.esEmpresaGrande ?
+    '<div class="aviso-ats">🏢 <strong>Empresa grande</strong> — Al adaptar tu CV, la IA lo formatea en estilo ATS/Harvard para pasar los filtros automáticos.</div>' :
+    '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Empresa mediana</strong> — La IA usará un formato moderno y cálido para tu CV.</div>';
 
   document.getElementById('contenido-detalle').innerHTML = `
     <div class="detalle-header">
       <div class="detalle-titulo">${emp.titulo}</div>
       <div class="detalle-empresa">${emp.empresa} · ${emp.ubicacion}</div>
+      ${emp.salario ? `<div style="color:#22c55e;font-size:14px;margin:8px 0">💰 ${emp.salario}</div>` : ''}
       <div class="score-grande ${clase}">${emp.score}%</div>
       <p class="resumen-texto">${emp.analisis?.resumen || 'Activá la IA para ver tu compatibilidad real'}</p>
     </div>
@@ -863,16 +760,17 @@ function verDetalle(id) {
 
 window.verDetalle = verDetalle;
 
-// ==// ============================================
-// ADAPTAR CV AL PUESTO CON IA
+// ============================================
+// ADAPTAR CV CON IA
 // ============================================
 
 async function adaptarCV() {
   if (!empleoSeleccionado) return;
 
   irA('pantalla-cv-adaptado');
+  const emp = empleoSeleccionado;
   document.getElementById('subtitulo-cv-adaptado').textContent =
-    `Para: ${empleoSeleccionado.titulo} en ${empleoSeleccionado.empresa}`;
+    `Para: ${emp.titulo} en ${emp.empresa}`;
   document.getElementById('cv-adaptado-contenido').innerHTML = `
     <div class="cargando">
       <span class="spinner">⚙️</span>
@@ -881,21 +779,14 @@ async function adaptarCV() {
   `;
 
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
-  const emp = empleoSeleccionado;
   const esGrande = emp.esEmpresaGrande;
 
-  // Construir perfil completo
-  const nombre = perfil.nombre || '';
-  const celular = perfil.celular || '';
-  const emailC = perfil.emailContacto || '';
-  const ciudad = perfil.ciudad || '';
-  const edad = perfil.edad || '';
-  const estudiosVal = perfil.estudios || '';
-  const institucion = perfil.institucion || '';
-  const expEmpresa = perfil.expEmpresa || '';
-  const expDetalle = perfil.expDetalle || '';
-  const infoExtra = perfil.infoExtra || '';
-  const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
+  const estudiosTexto = (perfil.estudios || '') === 'primario' ? 'Primario completo' :
+    (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
+    (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
+    (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
+    (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : '';
+
   const horarioTexto = (perfil.horarios || horarios)
     .map(h => h === 'cualquier_horario' ? 'Cualquier horario' :
       h === 'manana' ? 'Turno mañana' :
@@ -904,74 +795,46 @@ async function adaptarCV() {
       h === 'rotativo' ? 'Turno rotativo' : h)
     .join(', ');
 
-  const expTexto = (perfil.experiencia || experiencia) === 'sin_exp' ? 'Sin experiencia laboral' :
-    (perfil.experiencia || experiencia) === 'poca_exp' ? 'Poca experiencia (1-2 años)' :
-    (perfil.experiencia || experiencia) === 'media_exp' ? 'Experiencia media (3-5 años)' :
-    'Experiencia amplia (+5 años)';
-
-  const estudiosTexto = estudiosVal === 'primario' ? 'Primario completo' :
-    estudiosVal === 'secundario_inc' ? 'Secundario incompleto' :
-    estudiosVal === 'secundario' ? 'Secundario completo' :
-    estudiosVal === 'terciario' ? 'Terciario/Universitario en curso' :
-    estudiosVal === 'universitario' ? 'Universitario completo' : '';
+  const formatoInstruccion = esGrande ?
+    `FORMATO REQUERIDO: ATS/Harvard
+- Una sola columna, texto plano
+- Sin tablas, sin colores, sin íconos
+- Palabras clave del puesto bien visibles
+- Secciones en MAYÚSCULAS
+- Orden: DATOS PERSONALES, OBJETIVO, EXPERIENCIA, HABILIDADES, EDUCACIÓN, DISPONIBILIDAD` :
+    `FORMATO REQUERIDO: Moderno y cercano
+- Lenguaje cálido y profesional
+- Destacar actitud y personalidad
+- Objetivo profesional entusiasta y específico`;
 
   if (!apiKey) {
-    // Sin IA — CV básico
-    cvAdaptadoTexto = generarCVbasico(emp, nombre, celular, emailC, ciudad,
-      edad, estudiosTexto, institucion, expEmpresa, expDetalle,
-      habilidadesTexto, horarioTexto, expTexto, infoExtra);
+    cvAdaptadoTexto = generarCVbasico(emp, estudiosTexto, horarioTexto);
     document.getElementById('cv-adaptado-contenido').innerHTML =
       `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
     return;
   }
 
-  // Determinar formato según empresa
-  const formatoInstruccion = esGrande ?
-    `FORMATO REQUERIDO: ATS/Harvard (empresa grande usa sistemas automáticos de lectura)
-- Una sola columna, texto plano
-- Sin tablas, sin colores, sin íconos
-- Palabras clave del puesto bien visibles
-- Secciones con mayúsculas: DATOS PERSONALES, OBJETIVO PROFESIONAL, EXPERIENCIA LABORAL, HABILIDADES, EDUCACIÓN, DISPONIBILIDAD
-- Fechas en cada trabajo si las tiene` :
-    `FORMATO REQUERIDO: Moderno y visual (empresa mediana/pyme)
-- Lenguaje cálido y cercano
-- Destacar personalidad y actitud además de habilidades
-- Objetivo profesional específico y entusiasta
-- Secciones bien organizadas`;
+  const prompt = `Sos un experto en recursos humanos argentino especializado en CVs profesionales.
+Generá un CV adaptado específicamente para este puesto.
 
-  const prompt = `Sos un experto en recursos humanos argentino y especialista en redacción de CVs profesionales.
-Tu tarea es generar un CV profesional y competitivo para esta persona.
-
-DATOS DEL CANDIDATO:
-Nombre: ${nombre}
-${edad ? `Edad: ${edad} años` : ''}
-${celular ? `Celular: ${celular}` : ''}
-${emailC ? `Email: ${emailC}` : ''}
-${ciudad ? `Localidad: ${ciudad}` : ''}
-Nivel de experiencia: ${expTexto}
-${expEmpresa ? `Empresa(s) donde trabajó: ${expEmpresa}` : ''}
-${expDetalle ? `Lo que hacía en el trabajo (en sus palabras): "${expDetalle}"` : ''}
-${infoExtra ? `Información adicional que quiere que sepas: "${infoExtra}"` : ''}
-Estudios: ${estudiosTexto}
-${institucion ? `Institución: ${institucion}` : ''}
-Habilidades seleccionadas: ${habilidadesTexto || 'No especificadas'}
-Disponibilidad horaria: ${horarioTexto}
+DATOS COMPLETOS DEL CANDIDATO:
+${construirPerfilTexto()}
 
 PUESTO AL QUE SE POSTULA:
 Título: ${emp.titulo}
 Empresa: ${emp.empresa}
-Descripción del puesto: ${emp.descripcion}
+Descripción: ${emp.descripcion}
 
 ${formatoInstruccion}
 
-INSTRUCCIONES CRÍTICAS:
-1. Usá SOLO la información real del candidato. NO inventes datos, fechas, ni empresas que no mencionó.
-2. Si describió sus tareas con palabras simples (ej: "armaba rollos de tela"), transformalas en lenguaje profesional (ej: "Preparación y embalaje de producto textil para distribución")
-3. Si menciona habilidades como auto-elevador aunque sea por poco tiempo, incluilas como "Manejo de autoelevador/Clark (nivel básico)"
-4. Si no tiene experiencia formal, el OBJETIVO PROFESIONAL debe ser muy potente, específico para este puesto y esta empresa
-5. SIEMPRE incluí los datos de contacto completos al inicio
-6. Texto plano sin asteriscos, sin negritas con **, sin guiones decorativos
-7. Lenguaje argentino profesional
+REGLAS CRÍTICAS:
+1. Usá SOLO información real del candidato. NUNCA inventes datos ni fechas.
+2. Si describió tareas en palabras simples, transformalas en lenguaje profesional.
+3. Habilidades técnicas aunque sean por poco tiempo: incluílas como "(conocimiento práctico)"
+4. SIEMPRE incluí los datos de contacto completos al inicio.
+5. Si no tiene experiencia formal: el OBJETIVO debe ser muy potente y específico para este puesto.
+6. Texto plano sin asteriscos ni símbolos decorativos.
+7. Lenguaje argentino profesional.
 
 Generá el CV completo ahora:`;
 
@@ -979,21 +842,59 @@ Generá el CV completo ahora:`;
     const cvGenerado = await llamarGemini(prompt, apiKey);
     if (cvGenerado) {
       cvAdaptadoTexto = cvGenerado;
-      const tipoFormato = esGrande ?
-        '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para sistemas automáticos de selección de empresas grandes.</div>' :
-        '<div class="aviso-ats" style="border-color:#22c55e">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
+      const badge = esGrande ?
+        '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para sistemas automáticos de grandes empresas.</div>' :
+        '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
       document.getElementById('cv-adaptado-contenido').innerHTML =
-        tipoFormato + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
+        badge + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
       return;
     }
   } catch (e) {
-    console.log('Error Gemini:', e);
+    console.log('Error adaptando CV:', e);
   }
 
-  // Fallback sin IA
-  cvAdaptadoTexto = generarCVbasico(emp, nombre, celular, emailC, ciudad,
-    edad, estudiosTexto, institucion, expEmpresa, expDetalle,
-    habilidadesTexto, horarioTexto, expTexto, i
+  cvAdaptadoTexto = generarCVbasico(emp, estudiosTexto, horarioTexto);
+  document.getElementById('cv-adaptado-contenido').innerHTML =
+    `<div class="cv-adaptado-box">${cvAdaptadoTexto.replace(/\n/g, '<br>')}</div>`;
+}
+
+function generarCVbasico(emp, estudiosTexto, horarioTexto) {
+  const expTexto = (perfil.experiencia || experiencia) === 'sin_exp' ? 'sin experiencia formal previa' :
+    `con experiencia en ${perfil.expEmpresa || 'el área'}`;
+
+  return `CURRÍCULUM VITAE
+
+DATOS PERSONALES Y CONTACTO
+Nombre: ${perfil.nombre || ''}
+${perfil.edad ? `Edad: ${perfil.edad} años` : ''}
+${perfil.celular ? `Celular: ${perfil.celular}` : ''}
+${perfil.emailContacto ? `Email: ${perfil.emailContacto}` : ''}
+${perfil.ciudad ? `Localidad: ${perfil.ciudad}, Argentina` : 'País: Argentina'}
+
+OBJETIVO PROFESIONAL
+Me postulo para el puesto de ${emp.titulo} en ${emp.empresa}.
+${(perfil.experiencia || experiencia) === 'sin_exp'
+  ? 'Me caracterizo por mi responsabilidad, puntualidad y gran predisposición para aprender. Estoy disponible de forma inmediata.'
+  : `Profesional ${expTexto}. Busco nuevos desafíos donde pueda aportar mis conocimientos.`}
+
+EXPERIENCIA LABORAL
+${perfil.expEmpresa ? `Empresa: ${perfil.expEmpresa}
+Tareas: ${perfil.expDetalle || 'Tareas operativas generales'}` : 'Sin experiencia formal. Disponible para capacitación inmediata.'}
+${perfil.infoExtra ? `\nInformación adicional: ${perfil.infoExtra}` : ''}
+
+HABILIDADES Y COMPETENCIAS
+${(perfil.habilidades || habilidades).join(', ') || 'Trabajo en equipo, responsabilidad, puntualidad, adaptabilidad'}
+
+EDUCACIÓN
+${estudiosTexto || 'Formación en proceso'}
+${perfil.institucion ? `Institución: ${perfil.institucion}` : ''}
+
+DISPONIBILIDAD
+Inmediata
+Horarios: ${horarioTexto}`;
+}
+
+window.adaptarCV = adaptarCV;
 
 // ============================================
 // COPIAR CV
@@ -1009,12 +910,13 @@ function copiarCV() {
 window.copiarCV = copiarCV;
 
 // ============================================
-// POSTULACIÓN
+// POSTULACIÓN — ABRE LINK REAL DE JOOBLE
 // ============================================
 
 function postularme() {
   if (!empleoSeleccionado) return;
   guardarPostulacion(empleoSeleccionado);
+  // Abrimos el link REAL de Jooble/empresa (requisito obligatorio de Jooble)
   window.open(empleoSeleccionado.link, '_blank');
 }
 
