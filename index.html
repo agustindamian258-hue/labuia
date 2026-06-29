@@ -6,6 +6,7 @@
   <title>LabuIA - Empleos con IA</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -20,9 +21,9 @@
       </button>
       <p class="login-info">
         Al continuar aceptás nuestros
-        <a href="#" style="color:#7c3aed">Términos y Condiciones</a>
+        <a href="#" onclick="irA('pantalla-terminos')" style="color:#7c3aed">Términos y Condiciones</a>
         y la
-        <a href="#" style="color:#7c3aed">Política de Privacidad</a>
+        <a href="#" onclick="irA('pantalla-privacidad')" style="color:#7c3aed">Política de Privacidad</a>
       </p>
     </div>
   </div>
@@ -40,25 +41,18 @@
       <h2>Tu perfil</h2>
       <p class="subtitulo">Completá tus datos para encontrar los mejores empleos</p>
 
-      <!-- DATOS PERSONALES -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">👤 Datos personales</div>
-
         <label>Tu nombre completo</label>
         <input type="text" id="nombre" placeholder="Ej: Juan Pérez">
-
         <label>¿Cuántos años tenés?</label>
         <input type="number" id="edad" placeholder="Ej: 25" min="14" max="99">
-
         <label>Celular</label>
         <input type="tel" id="celular" placeholder="Ej: 11 2345-6789">
-
         <label>Email</label>
         <input type="email" id="email-contacto" placeholder="Ej: juan@gmail.com">
-
         <label>¿En qué barrio o ciudad vivís?</label>
         <input type="text" id="ciudad" placeholder="Ej: José C. Paz, Zona Norte GBA">
-
         <label>¿Hasta dónde podés viajar?</label>
         <div class="toggles">
           <button class="toggle activo" data-valor="zona">Mi zona</button>
@@ -67,10 +61,8 @@
         </div>
       </div>
 
-      <!-- ESTUDIOS -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">📚 Educación</div>
-
         <label>Nivel de estudios</label>
         <select id="estudios">
           <option value="">Seleccioná...</option>
@@ -80,15 +72,12 @@
           <option value="terciario">Terciario/Universitario en curso</option>
           <option value="universitario">Universitario completo</option>
         </select>
-
         <label>¿En qué escuela o institución estudiaste? (opcional)</label>
         <input type="text" id="institucion" placeholder="Ej: EEST N°1 de San Miguel, UTN...">
       </div>
 
-      <!-- EXPERIENCIA -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">💼 Tu experiencia laboral</div>
-
         <label>¿Tenés experiencia laboral?</label>
         <div class="toggles">
           <button class="toggle activo" data-valor="sin_exp" data-grupo="experiencia">Sin experiencia</button>
@@ -96,33 +85,26 @@
           <button class="toggle" data-valor="media_exp" data-grupo="experiencia">Media (3-5 años)</button>
           <button class="toggle" data-valor="mucha_exp" data-grupo="experiencia">Mucha (+5 años)</button>
         </div>
-
         <div id="zona-experiencia-detalle" class="oculto">
           <label>¿En qué lugar o empresa trabajaste?</label>
           <input type="text" id="experiencia-empresa" placeholder="Ej: Fábrica textil, CCU Argentina, Carrefour...">
-
           <label>Contame qué hacías ahí en el día a día (escribilo como te salga)</label>
-          <textarea id="experiencia-detalle" placeholder="Ej: En la textil me tocaba armar los rollos de tela y cargar las cajas en el camión. En CCU estaba en la parte de las máquinas controlando que salga todo bien y limpiando el lugar."></textarea>
+          <textarea id="experiencia-detalle" placeholder="Ej: En la textil me tocaba armar los rollos de tela y cargar las cajas. En CCU controlaba las máquinas y limpiaba el sector..."></textarea>
         </div>
-
         <label style="margin-top:16px">¿Algo más que sepas hacer o aclaración para la IA?</label>
-        <textarea id="info-extra" placeholder="Ej: Manejé auto-elevador por poco tiempo pero sé usarlo. También tengo experiencia cuidando niños aunque no fue un trabajo formal..."></textarea>
+        <textarea id="info-extra" placeholder="Ej: Manejé auto-elevador por poco tiempo pero sé usarlo. Tengo el carnet para actualizar..."></textarea>
       </div>
 
-      <!-- QUÉ BUSCÁS -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">🔍 Qué trabajo buscás</div>
-
         <label>¿Qué tipo de trabajo buscás?</label>
         <input type="text" id="puesto-buscado" placeholder="Ej: Operario, repositor, cajero, cualquier cosa...">
-
         <label>Modalidad</label>
         <div class="toggles">
           <button class="toggle activo" data-valor="presencial" data-grupo="modalidad">Presencial</button>
           <button class="toggle" data-valor="remoto" data-grupo="modalidad">Remoto</button>
           <button class="toggle" data-valor="hibrido" data-grupo="modalidad">Híbrido</button>
         </div>
-
         <label>Disponibilidad horaria</label>
         <div class="toggles-wrap">
           <button class="toggle-check" data-valor="manana">☀️ Mañana</button>
@@ -131,19 +113,17 @@
           <button class="toggle-check" data-valor="rotativo">🔄 Rotativo</button>
           <button class="toggle-check activo" data-valor="cualquier_horario">✅ Cualquier horario</button>
         </div>
-
         <label>Pretensión salarial (opcional)</label>
         <input type="text" id="salario" placeholder="Ej: $500.000, lo que sea, a convenir...">
       </div>
 
-      <!-- HABILIDADES -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">⭐ Habilidades y certificaciones</div>
         <div class="toggles-wrap">
           <button class="toggle-check" data-valor="Registro auto">🚗 Registro auto</button>
           <button class="toggle-check" data-valor="Registro moto">🏍️ Registro moto</button>
           <button class="toggle-check" data-valor="Registro camión">🚛 Registro camión</button>
-          <button class="toggle-check" data-valor="Manejo de auto-elevador">🏗️ Auto-elevador</button>
+          <button class="toggle-check" data-valor="Manejo de autoelevador">🏗️ Auto-elevador</button>
           <button class="toggle-check" data-valor="Manejo de PC">💻 Manejo de PC</button>
           <button class="toggle-check" data-valor="Excel">📊 Excel</button>
           <button class="toggle-check" data-valor="Inglés">🇺🇸 Inglés</button>
@@ -153,15 +133,18 @@
           <button class="toggle-check" data-valor="Soldadura">🔧 Soldadura</button>
           <button class="toggle-check" data-valor="Electricidad">⚡ Electricidad</button>
           <button class="toggle-check" data-valor="Plomería">🔩 Plomería</button>
-          <button class="toggle-check" data-valor="Cocina">👨‍🍳 Cocina</button>
+          <button class="toggle-check" data-valor="Cocina profesional">👨‍🍳 Cocina</button>
           <button class="toggle-check" data-valor="Cuidado de personas">❤️ Cuidado de personas</button>
           <button class="toggle-check" data-valor="Manejo de caja">💰 Manejo de caja</button>
           <button class="toggle-check" data-valor="Ventas">📈 Ventas</button>
           <button class="toggle-check" data-valor="Redes sociales">📱 Redes sociales</button>
+          <button class="toggle-check" data-valor="Diseño gráfico">🎨 Diseño gráfico</button>
+          <button class="toggle-check" data-valor="Fotografía">📷 Fotografía</button>
+          <button class="toggle-check" data-valor="Carpintería">🪚 Carpintería</button>
+          <button class="toggle-check" data-valor="Pintura">🖌️ Pintura</button>
         </div>
       </div>
 
-      <!-- CV -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">📄 Tu CV (opcional)</div>
         <div class="cv-opciones">
@@ -187,7 +170,6 @@
             </div>
           </div>
         </div>
-
         <div id="zona-pdf" class="zona-cv oculto">
           <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
             <span class="upload-icono">📁</span>
@@ -196,11 +178,9 @@
           <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
           <div id="pdf-estado"></div>
         </div>
-
         <div id="zona-texto" class="zona-cv oculto">
           <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
         </div>
-
         <div id="zona-generar" class="zona-cv oculto">
           <p class="api-key-info">La IA va a generar tu CV con los datos que completaste arriba.</p>
           <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
@@ -208,7 +188,6 @@
         </div>
       </div>
 
-      <!-- API KEY -->
       <div class="api-key-box">
         <div class="api-key-header" onclick="toggleAPIkey()">
           <span>⚙️ Activar IA real (Gemini)</span>
@@ -263,12 +242,20 @@
       <h2>Tu CV adaptado</h2>
       <p class="subtitulo" id="subtitulo-cv-adaptado">Optimizado para este puesto</p>
       <div id="cv-adaptado-contenido"></div>
-      <button class="btn-secundario" onclick="copiarCV()" style="margin-top:16px">
-        📋 Copiar CV
-      </button>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn-secundario" onclick="copiarCV()" style="flex:1">
+          📋 Copiar
+        </button>
+        <button class="btn-secundario" onclick="descargarCV()" style="flex:1;border-color:#22c55e;color:#22c55e">
+          ⬇️ Descargar PDF
+        </button>
+      </div>
       <button class="btn-principal" onclick="postularmeConCV()">
-        💼 Postularme ahora
+        💼 Ir a postularme
       </button>
+      <p style="text-align:center;color:#8899aa;font-size:12px;margin-top:10px">
+        Descargá tu CV adaptado y usalo cuando llegues al portal de empleo
+      </p>
     </div>
   </div>
 
@@ -284,6 +271,62 @@
     </div>
   </div>
 
+  <!-- PANTALLA TÉRMINOS -->
+  <div class="pantalla" id="pantalla-terminos">
+    <div class="header-app">
+      <button class="btn-volver" onclick="irA('pantalla-login')">← Volver</button>
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido">
+      <h2>Términos y Condiciones</h2>
+      <div class="terminos-texto">
+        <p><strong>Última actualización:</strong> Junio 2025</p>
+        <p>Al usar LabuIA aceptás los siguientes términos:</p>
+        <h3>1. Servicio</h3>
+        <p>LabuIA es una plataforma de asistencia para búsqueda de empleo que utiliza Inteligencia Artificial para analizar compatibilidad laboral y adaptar CVs. Los empleos mostrados son provistos por Jooble y otros portales de terceros.</p>
+        <h3>2. Datos personales</h3>
+        <p>Tus datos se usan exclusivamente para generar tu CV y encontrar empleos compatibles. No vendemos ni compartimos tu información con terceros.</p>
+        <h3>3. Empleos de terceros</h3>
+        <p>LabuIA muestra empleos provistos por Jooble. Al tocar "Postularme" serás redirigido al portal original de la oferta. LabuIA no es responsable del contenido de los empleos ni del proceso de selección de las empresas.</p>
+        <h3>4. IA y CV</h3>
+        <p>Los CVs generados por IA son una herramienta de asistencia. El usuario es responsable de verificar que el contenido sea correcto antes de enviarlo.</p>
+        <h3>5. Uso aceptable</h3>
+        <p>Está prohibido usar LabuIA para fines fraudulentos, crear perfiles falsos o postularse con información incorrecta.</p>
+        <h3>6. Modificaciones</h3>
+        <p>Nos reservamos el derecho de modificar estos términos. Los cambios serán notificados en la app.</p>
+        <p>Para consultas: <strong>labuia.app@gmail.com</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANTALLA PRIVACIDAD -->
+  <div class="pantalla" id="pantalla-privacidad">
+    <div class="header-app">
+      <button class="btn-volver" onclick="irA('pantalla-login')">← Volver</button>
+      <h1>Labu<span>IA</span></h1>
+      <div></div>
+    </div>
+    <div class="contenido">
+      <h2>Política de Privacidad</h2>
+      <div class="terminos-texto">
+        <p><strong>Última actualización:</strong> Junio 2025</p>
+        <h3>Qué datos recopilamos</h3>
+        <p>Nombre, email, celular, ciudad, experiencia laboral, estudios y habilidades que vos ingresás voluntariamente.</p>
+        <h3>Cómo los usamos</h3>
+        <p>Exclusivamente para generar tu CV y encontrar empleos compatibles con tu perfil mediante IA.</p>
+        <h3>Dónde se guardan</h3>
+        <p>Tus datos se almacenan en Firebase (Google) con encriptación de nivel empresarial.</p>
+        <h3>No compartimos tus datos</h3>
+        <p>No vendemos, alquilamos ni compartimos tu información personal con terceros. Los empleos son consultados en tiempo real a Jooble sin enviar tus datos personales.</p>
+        <h3>Tus derechos</h3>
+        <p>Podés solicitar la eliminación de tu cuenta y datos en cualquier momento escribiendo a <strong>labuia.app@gmail.com</strong></p>
+        <h3>Cookies</h3>
+        <p>Usamos solo las cookies necesarias para mantener tu sesión activa. No usamos cookies de seguimiento publicitario.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- NAVBAR -->
   <nav class="navbar" id="navbar" style="display:none">
     <button class="nav-item activo" onclick="irA('pantalla-perfil'); setNav(this)">
@@ -296,4 +339,4 @@
 
   <script type="module" src="app.js"></script>
 </body>
-</html>
+    </html>
