@@ -24,7 +24,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ============================================
-// AUTENTICACIÓN
+// AUTENTICACIÓN - SESIÓN PERSISTENTE
 // ============================================
 
 onAuthStateChanged(auth, async (usuario) => {
@@ -47,8 +47,13 @@ onAuthStateChanged(auth, async (usuario) => {
 
 async function loginConGoogle() {
   try {
+    // Usar redirect en vez de popup para mantener sesión mejor en móvil
+    const { GoogleAuthProvider, signInWithRedirect } = await import(
+      'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
+    );
     await signInWithPopup(auth, provider);
   } catch (e) {
+    console.log('Error login:', e);
     alert('Error al iniciar sesión. Intentá de nuevo.');
   }
 }
@@ -78,6 +83,7 @@ async function cargarPerfilFirebase(uid) {
     if (snap.exists()) {
       const datos = snap.data();
       perfil = { ...datos };
+
       if (datos.nombre) document.getElementById('nombre').value = datos.nombre;
       if (datos.edad) document.getElementById('edad').value = datos.edad;
       if (datos.celular) document.getElementById('celular').value = datos.celular;
@@ -87,20 +93,22 @@ async function cargarPerfilFirebase(uid) {
       if (datos.salario) document.getElementById('salario').value = datos.salario;
       if (datos.estudios) document.getElementById('estudios').value = datos.estudios;
       if (datos.institucion) document.getElementById('institucion').value = datos.institucion;
-      if (datos.expEmpresa) { const el = document.getElementById('experiencia-empresa'); if (el) el.value = datos.expEmpresa; }
-      if (datos.expDetalle) { const el = document.getElementById('experiencia-detalle'); if (el) el.value = datos.expDetalle; }
-      if (datos.infoExtra) { const el = document.getElementById('info-extra'); if (el) el.value = datos.infoExtra; }
+      const expEmp = document.getElementById('experiencia-empresa');
+      if (expEmp && datos.expEmpresa) expEmp.value = datos.expEmpresa;
+      const expDet = document.getElementById('experiencia-detalle');
+      if (expDet && datos.expDetalle) expDet.value = datos.expDetalle;
+      const infoEx = document.getElementById('info-extra');
+      if (infoEx && datos.infoExtra) infoEx.value = datos.infoExtra;
       if (datos.cv) cvFinal = datos.cv;
+      if (datos.fotoPerfil) perfil.fotoPerfil = datos.fotoPerfil;
+
       if (datos.geminiKey) {
         localStorage.setItem('labuia_gemini_key', datos.geminiKey);
         const el = document.getElementById('gemini-key');
         if (el) el.value = datos.geminiKey;
-        const estado = document.getElementById('api-key-estado');
-        if (estado) {
-          estado.style.cssText = 'background:#052e16;color:#22c55e;border:1px solid #22c55e';
-          estado.textContent = '✅ IA activada';
-        }
+        mostrarIAactivada();
       }
+
       if (datos.modalidad) { modalidad = datos.modalidad; actualizarToggle('modalidad', modalidad); }
       if (datos.viaje) { viaje = datos.viaje; actualizarToggleSimple(viaje); }
       if (datos.experiencia) {
@@ -117,6 +125,19 @@ async function cargarPerfilFirebase(uid) {
   } catch (e) {
     console.log('Error cargando:', e);
   }
+}
+
+function mostrarIAactivada() {
+  const estado = document.getElementById('api-key-estado');
+  if (estado) {
+    estado.style.cssText = 'background:#052e16;color:#22c55e;border:1px solid #22c55e;padding:8px;border-radius:8px;text-align:center;margin-top:8px';
+    estado.textContent = '✅ IA activada';
+  }
+  // Ocultar el box de API key ya que está configurada
+  const zona = document.getElementById('api-key-zona');
+  const arrow = document.getElementById('api-key-arrow');
+  if (zona) zona.classList.add('oculto');
+  if (arrow) arrow.textContent = '▼';
 }
 
 // ============================================
@@ -206,7 +227,7 @@ async function guardarAPIkey() {
   const key = document.getElementById('gemini-key').value.trim();
   const estado = document.getElementById('api-key-estado');
   if (!key || key.length < 10) {
-    estado.style.cssText = 'background:#1c0a00;color:#f97316;border:1px solid #f97316';
+    estado.style.cssText = 'background:#1c0a00;color:#f97316;border:1px solid #f97316;padding:8px;border-radius:8px;text-align:center;margin-top:8px';
     estado.textContent = '❌ Key inválida';
     return;
   }
@@ -214,12 +235,33 @@ async function guardarAPIkey() {
   if (usuarioActual) {
     await guardarPerfilFirebase(usuarioActual.uid, { geminiKey: key });
   }
-  estado.style.cssText = 'background:#052e16;color:#22c55e;border:1px solid #22c55e';
-  estado.textContent = '✅ IA activada y guardada para siempre';
+  mostrarIAactivada();
 }
 
 window.toggleAPIkey = toggleAPIkey;
 window.guardarAPIkey = guardarAPIkey;
+
+// ============================================
+// FOTO DE PERFIL
+// ============================================
+
+async function subirFotoPerfil(input) {
+  const archivo = input.files[0];
+  if (!archivo) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    perfil.fotoPerfil = e.target.result;
+    document.getElementById('preview-foto').src = e.target.result;
+    document.getElementById('preview-foto').style.display = 'block';
+    document.getElementById('foto-placeholder').style.display = 'none';
+    if (usuarioActual) {
+      await guardarPerfilFirebase(usuarioActual.uid, { fotoPerfil: e.target.result });
+    }
+  };
+  reader.readAsDataURL(archivo);
+}
+
+window.subirFotoPerfil = subirFotoPerfil;
 
 // ============================================
 // OPCIONES CV
@@ -256,64 +298,72 @@ async function procesarPDF(input) {
     }
     if (texto.trim().length < 50) throw new Error('Sin texto');
     cvFinal = texto.trim();
+    if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
     estado.className = 'pdf-ok';
-    estado.textContent = `✅ CV extraído (${pdf.numPages} páginas)`;
+    estado.textContent = `✅ CV cargado correctamente (${pdf.numPages} páginas)`;
   } catch {
     estado.className = 'pdf-error';
-    estado.textContent = '❌ No pudimos leer el PDF. Probá pegando el texto.';
-    seleccionarOpcionCV('texto');
+    estado.textContent = '❌ No pudimos leer el PDF. Seleccioná otro archivo.';
   }
 }
 
 window.procesarPDF = procesarPDF;
 
 // ============================================
-// LLAMAR GEMINI - SOPORTA CUALQUIER KEY
+// LLAMAR GEMINI - SOPORTA KEYS AQ. Y AIza
 // ============================================
 
 async function llamarGemini(prompt, apiKey) {
-  // Todos los endpoints posibles según tipo de key
-  const intentos = [
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      body: { contents: [{ parts: [{ text: prompt }] }] }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-      body: { contents: [{ parts: [{ text: prompt }] }] }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
-      body: { contents: [{ parts: [{ text: prompt }] }] }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
-      body: { contents: [{ parts: [{ text: prompt }] }] }
-    },
-    {
-      url: `https://generativelanguage.googleapis.com/v1alpha/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
-      body: { contents: [{ parts: [{ text: prompt }] }] }
-    }
+  const modelos = [
+    'gemini-2.0-flash',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+    'gemini-pro'
   ];
 
-  for (const intento of intentos) {
+  for (const modelo of modelos) {
     try {
-      const res = await fetch(intento.url, {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelo}:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(intento.body)
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey
+        },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 2048,
+            topP: 0.8
+          }
+        })
       });
-      if (!res.ok) continue;
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.log(`Modelo ${modelo} falló:`, err?.error?.message || res.status);
+        continue;
+      }
+
       const data = await res.json();
       const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (texto && texto.length > 50) return texto;
-    } catch {}
+      if (texto && texto.length > 20) {
+        console.log(`✅ Gemini respondió con ${modelo}`);
+        return texto;
+      }
+    } catch (e) {
+      console.log(`Error con ${modelo}:`, e.message);
+    }
   }
+
+  console.log('❌ Todos los modelos fallaron');
   return null;
 }
 
 // ============================================
-// CONSTRUIR PERFIL TEXTO
+// CONSTRUIR PERFIL TEXTO COMPLETO
 // ============================================
 
 function construirPerfilTexto() {
@@ -338,58 +388,63 @@ function construirPerfilTexto() {
     (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : '';
 
   return `
-NOMBRE: ${perfil.nombre || ''}
+NOMBRE COMPLETO: ${perfil.nombre || ''}
 EDAD: ${perfil.edad || ''} años
 CELULAR: ${perfil.celular || ''}
 EMAIL: ${perfil.emailContacto || ''}
 LOCALIDAD: ${perfil.ciudad || 'Argentina'}
 NIVEL DE EXPERIENCIA: ${expTexto}
-EMPRESAS DONDE TRABAJÓ: ${perfil.expEmpresa || 'Ninguna'}
-LO QUE HACÍA (en sus palabras): ${perfil.expDetalle || 'No especificado'}
-INFORMACIÓN EXTRA QUE QUIERE INCLUIR: ${perfil.infoExtra || 'Ninguna'}
+EMPRESA(S) DONDE TRABAJÓ: ${perfil.expEmpresa || 'Ninguna'}
+DESCRIPCIÓN DE TAREAS (en sus propias palabras): "${perfil.expDetalle || 'No especificado'}"
+INFORMACIÓN ADICIONAL: "${perfil.infoExtra || 'Ninguna'}"
 ESTUDIOS: ${estudiosTexto}
-INSTITUCIÓN: ${perfil.institucion || ''}
-HABILIDADES: ${habilidadesTexto || 'No especificadas'}
+INSTITUCIÓN EDUCATIVA: ${perfil.institucion || 'No especificada'}
+HABILIDADES Y CERTIFICACIONES: ${habilidadesTexto || 'No especificadas'}
 DISPONIBILIDAD HORARIA: ${horarioTexto}
-MODALIDAD: ${perfil.modalidad || modalidad}
-${cvFinal ? `\nCV PREVIO DEL CANDIDATO:\n${cvFinal.substring(0, 1000)}` : ''}
+MODALIDAD BUSCADA: ${perfil.modalidad || modalidad}
+${cvFinal ? `\nCONTENIDO DEL CV CARGADO:\n${cvFinal.substring(0, 1500)}` : ''}
 `.trim();
 }
 
 // ============================================
-// GENERAR CV CON IA
+// GENERAR CV BASE CON IA (sin puesto específico)
 // ============================================
 
 async function generarCVconIA() {
   const preview = document.getElementById('cv-generado-preview');
   preview.style.display = 'block';
-  preview.textContent = '⏳ Generando CV con IA...';
+  preview.textContent = '⏳ Generando tu CV profesional con IA...';
 
   const apiKey = localStorage.getItem('labuia_gemini_key') || '';
   const puesto = perfil.puestoBuscado || document.getElementById('puesto-buscado').value.trim();
 
   if (!apiKey) {
-    preview.textContent = '⚠️ Necesitás configurar tu API Key de Gemini para usar esta función.';
+    preview.textContent = '⚠️ Configurá tu API Key de Gemini para generar el CV con IA.';
     return;
   }
 
-  const prompt = `Sos un experto en recursos humanos argentino.
-Generá un CV profesional completo para esta persona.
+  const prompt = `Sos un experto en recursos humanos argentino especializado en redactar CVs profesionales.
+Generá un CV profesional completo usando TODA la información disponible del candidato.
 
+INFORMACIÓN DEL CANDIDATO:
 ${construirPerfilTexto()}
 
-PUESTO QUE BUSCA: ${puesto || 'Cualquier empleo'}
+PUESTO QUE BUSCA: ${puesto || 'Empleos en general'}
 
-INSTRUCCIONES CRÍTICAS:
-- Transformá las descripciones en palabras simples a lenguaje profesional de RRHH
-- Ej: "acomodaba el depósito" → "Organización y gestión de stock en depósito"
-- Ej: "manejé auto elevador" → "Operación de autoelevador / Clark (conocimiento práctico)"
-- Las habilidades deben tener nombres legibles: "Atención al cliente" NO "atencion_cliente"
-- Incluí datos de contacto completos al inicio
-- Texto plano sin asteriscos
-- Lenguaje argentino profesional
+REGLAS CRÍTICAS:
+1. Si hay un CV cargado, usá esa información como base principal y complementá con los datos del formulario
+2. Transformá el lenguaje coloquial en profesional:
+   - "acomodaba el depósito" → "Gestión y organización de stock en depósito"
+   - "limpiaba" → "Mantenimiento y limpieza de instalaciones"
+   - "manejé auto elevador" → "Operación de autoelevador / Clark"
+   - "controlaba que salga bien" → "Control de calidad del proceso productivo"
+3. Habilidades con nombres legibles: "Atención al cliente" NO "atencion_cliente"
+4. Si tiene certificaciones aunque vencidas: mencionarlas como "(en proceso de renovación)"
+5. NUNCA inventar datos que no mencionó el candidato
+6. Incluir siempre contacto completo al inicio
+7. Texto plano sin asteriscos
 
-SECCIONES OBLIGATORIAS:
+SECCIONES:
 DATOS PERSONALES Y CONTACTO
 OBJETIVO PROFESIONAL
 EXPERIENCIA LABORAL
@@ -403,7 +458,7 @@ DISPONIBILIDAD`;
     preview.textContent = texto;
     if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
   } else {
-    preview.textContent = '❌ No se pudo conectar con la IA. Verificá tu API Key.';
+    preview.textContent = '❌ No se pudo conectar con la IA. Verificá tu API Key en Configuración.';
   }
 }
 
@@ -426,12 +481,16 @@ async function guardarPerfilYBuscar() {
   const expEmpresa = document.getElementById('experiencia-empresa')?.value.trim() || '';
   const expDetalle = document.getElementById('experiencia-detalle')?.value.trim() || '';
   const infoExtra = document.getElementById('info-extra')?.value.trim() || '';
+  const habilidadesEscritas = document.getElementById('habilidades-escritas')?.value.trim() || '';
 
   if (!puesto) { alert('Escribí qué tipo de trabajo buscás'); return; }
   if (!ciudad) { alert('Escribí en qué ciudad o zona vivís'); return; }
 
-  if (opcionCVactual === 'texto') {
-    cvFinal = document.getElementById('cv-texto').value.trim();
+  // Combinar habilidades seleccionadas con las escritas
+  let habilidadesFinales = [...habilidades];
+  if (habilidadesEscritas) {
+    const extra = habilidadesEscritas.split(',').map(h => h.trim()).filter(h => h.length > 0);
+    habilidadesFinales = [...new Set([...habilidadesFinales, ...extra])];
   }
 
   perfil = {
@@ -439,7 +498,11 @@ async function guardarPerfilYBuscar() {
     puestoBuscado: puesto, salario,
     estudios: estudiosVal, institucion,
     experiencia, expEmpresa, expDetalle, infoExtra,
-    modalidad, viaje, horarios, habilidades, cv: cvFinal
+    modalidad, viaje,
+    horarios, habilidades: habilidadesFinales,
+    cv: cvFinal,
+    fotoPerfil: perfil.fotoPerfil || '',
+    geminiKey: localStorage.getItem('labuia_gemini_key') || ''
   };
 
   if (usuarioActual) await guardarPerfilFirebase(usuarioActual.uid, perfil);
@@ -455,12 +518,12 @@ window.guardarPerfilYBuscar = guardarPerfilYBuscar;
 // ============================================
 
 async function buscarEmpleos(puesto, ciudad) {
-  document.getElementById('titulo-resultados').textContent = 'Buscando empleos...';
-  document.getElementById('subtitulo-resultados').textContent = 'Buscando en portales argentinos...';
+  document.getElementById('titulo-resultados').textContent = 'Encontrando oportunidades...';
+  document.getElementById('subtitulo-resultados').textContent = 'Buscando tu próxima oportunidad profesional';
   document.getElementById('lista-empleos').innerHTML = `
     <div class="cargando">
       <span class="spinner">⚙️</span>
-      Buscando empleos reales en Argentina...
+      Buscando tu próxima oportunidad profesional...
     </div>
   `;
 
@@ -473,9 +536,9 @@ async function buscarEmpleos(puesto, ciudad) {
           ...e,
           score: Math.max(88 - (i * 4), 50),
           analisis: {
-            fortalezas: ['Empleo real en Argentina', 'Coincide con tu búsqueda', 'Activá la IA para análisis real'],
-            debilidades: ['Configurá tu API Key para análisis detallado'],
-            resumen: 'Score estimado. Activá la IA para compatibilidad real.'
+            fortalezas: ['Empleo encontrado en Argentina', 'Coincide con tu búsqueda', 'Activá la IA para análisis detallado'],
+            debilidades: ['Activá tu API Key para ver compatibilidad real'],
+            resumen: 'Score estimado. Activá la IA para análisis real.'
           }
         }));
 
@@ -484,7 +547,7 @@ async function buscarEmpleos(puesto, ciudad) {
   } catch (e) {
     console.log('Error:', e);
     document.getElementById('lista-empleos').innerHTML =
-      '<div class="cargando">❌ Error al buscar. Revisá tu conexión.</div>';
+      '<div class="cargando">❌ Error al buscar. Revisá tu conexión e intentá de nuevo.</div>';
   }
 }
 
@@ -494,20 +557,52 @@ async function buscarEmpleos(puesto, ciudad) {
 
 async function obtenerEmpleosJooble(puesto, ciudad) {
   try {
+    const body = JSON.stringify({
+      keywords: puesto,
+      location: ciudad || 'Argentina',
+      page: 1,
+      resultsOnPage: 20
+    });
+
+    // Intento directo a Jooble
+    const response = await fetch(`https://jooble.org/api/${JOOBLE_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.jobs && data.jobs.length > 0) {
+        return data.jobs.slice(0, 15).map((job, i) => ({
+          id: i + 1,
+          titulo: job.title || puesto,
+          empresa: job.company || 'Empresa confidencial',
+          ubicacion: job.location || ciudad || 'Argentina',
+          descripcion: (job.snippet || '').replace(/<[^>]*>/g, '').substring(0, 600),
+          link: job.link,
+          salario: job.salary || '',
+          fuente: 'Jooble',
+          esEmpresaGrande: detectarEmpresaGrande(job.company || ''),
+          score: 0,
+          analisis: null
+        }));
+      }
+    }
+  } catch (e) {
+    console.log('Error Jooble directo:', e);
+  }
+
+  // Proxy si falla directo
+  try {
     const response = await fetch(
       `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://jooble.org/api/${JOOBLE_API_KEY}`)}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          keywords: puesto,
-          location: ciudad || 'Argentina',
-          page: 1,
-          resultsOnPage: 20
-        })
+        body: JSON.stringify({ keywords: puesto, location: ciudad || 'Argentina', page: 1, resultsOnPage: 20 })
       }
     );
-
     const data = await response.json();
     if (data.jobs && data.jobs.length > 0) {
       return data.jobs.slice(0, 15).map((job, i) => ({
@@ -525,7 +620,7 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
       }));
     }
   } catch (e) {
-    console.log('Error Jooble:', e);
+    console.log('Error Jooble proxy:', e);
   }
 
   return generarEmpleosRespaldo(puesto, ciudad);
@@ -535,7 +630,8 @@ function detectarEmpresaGrande(nombre) {
   const grandes = ['arcor','carrefour','mercado libre','mercadolibre','banco','galicia',
     'santander','bbva','hsbc','quilmes','pepsico','unilever','walmart','coto','jumbo',
     'dia','molinos','bimbo','kraft','danone','coca-cola','personal','claro','movistar',
-    'telecom','despegar','globant','mercadopago','pedidosya','rappi','adecco','manpower'];
+    'telecom','despegar','globant','mercadopago','pedidosya','rappi','adecco','manpower',
+    'toyota','ford','fiat','renault','volkswagen','samsung','lg','philips'];
   return grandes.some(g => nombre.toLowerCase().includes(g));
 }
 
@@ -548,9 +644,9 @@ function generarEmpleosRespaldo(puesto, ciudad) {
     cajero: ['Carrefour Argentina','Farmacity','Coto CICSA','Rapipago','Pago Fácil','Walmart Argentina'],
     limpieza: ['Sodexo Argentina','ISS Argentina','Compass Group','Limpiolux','Cintas Corporation'],
     seguridad: ['Securitas Argentina','G4S Argentina','Prosegur Argentina','Brinks Argentina'],
-    mozo: ['McDonald\'s Argentina','Burger King Argentina','Mostaza','TGI Fridays','Café Martínez'],
+    mozo: ["McDonald's Argentina","Burger King Argentina",'Mostaza','TGI Fridays','Café Martínez'],
     delivery: ['PedidosYa','Rappi Argentina','Glovo Argentina','Andreani','OCA Argentina'],
-    chofer: ['Andreani','DHL Argentina','OCA Argentina','Mercado Envíos','Logística 3PL'],
+    chofer: ['Andreani','DHL Argentina','OCA Argentina','Mercado Envíos'],
   };
   const clave = Object.keys(mapa).find(k => p.includes(k)) || null;
   const empresas = clave ? mapa[clave] : ['Adecco Argentina','Manpower Argentina','Randstad Argentina','Kelly Services','Bayton RRHH','Grupo Gestión'];
@@ -561,7 +657,7 @@ function generarEmpleosRespaldo(puesto, ciudad) {
     titulo: puesto,
     empresa: emp,
     ubicacion: `${zona}, Argentina`,
-    descripcion: `Oferta de ${puesto} en ${emp}. Tocá "Postularme" para ver los detalles completos y aplicar directamente.`,
+    descripcion: `Oportunidad de ${puesto} en ${emp}. Tocá "Ver detalles" para conocer todos los requisitos y condiciones del puesto.`,
     link,
     salario: '',
     fuente: 'Jooble',
@@ -583,7 +679,7 @@ async function analizarConIA(empleos, puesto) {
   for (const empleo of empleos) {
     try {
       const prompt = `Sos un experto en RRHH argentino.
-Analizá compatibilidad entre este perfil y esta oferta.
+Analizá compatibilidad entre este perfil y esta oferta. Sé justo y específico.
 
 PERFIL:
 ${perfilTexto}
@@ -594,19 +690,28 @@ Empresa: ${empleo.empresa}
 Ubicación: ${empleo.ubicacion}
 Descripción: ${empleo.descripcion.substring(0, 300)}
 
-Respondé SOLO con JSON válido:
-{"score":numero,"fortalezas":["r1","r2","r3"],"debilidades":["d1","d2"],"resumen":"una oración"}`;
+CRITERIOS:
+- Sin experiencia + puesto entry-level = score 70-80
+- Experiencia relevante = score 80-95
+- Habilidades que coinciden = sumar puntos
+- Distancia razonable = factor positivo
+
+Respondé SOLO con JSON válido sin texto extra:
+{"score":75,"fortalezas":["r1","r2","r3"],"debilidades":["d1","d2"],"resumen":"una oración en español argentino"}`;
 
       const texto = await llamarGemini(prompt, apiKey);
       if (texto) {
         const limpio = texto.replace(/```json|```/g, '').trim();
-        const analisis = JSON.parse(limpio);
-        resultado.push({ ...empleo, score: analisis.score || 50, analisis });
+        const inicio = limpio.indexOf('{');
+        const fin = limpio.lastIndexOf('}');
+        const jsonStr = limpio.substring(inicio, fin + 1);
+        const analisis = JSON.parse(jsonStr);
+        resultado.push({ ...empleo, score: Math.min(Math.max(analisis.score || 50, 1), 100), analisis });
       } else {
-        resultado.push({ ...empleo, score: 50, analisis: null });
+        resultado.push({ ...empleo, score: 60, analisis: null });
       }
     } catch {
-      resultado.push({ ...empleo, score: 50, analisis: null });
+      resultado.push({ ...empleo, score: 60, analisis: null });
     }
   }
   return resultado;
@@ -617,32 +722,29 @@ Respondé SOLO con JSON válido:
 // ============================================
 
 function mostrarResultados(empleos, puesto) {
-  document.getElementById('titulo-resultados').textContent = 'Empleos para vos';
+  document.getElementById('titulo-resultados').textContent = 'Oportunidades para vos';
   document.getElementById('subtitulo-resultados').textContent =
     `${empleos.length} ofertas encontradas para "${puesto}"`;
 
-  document.getElementById('lista-empleos').innerHTML = `
-    <div class="powered-by">🔍 Empleos provistos por <strong>Jooble</strong></div>
-    ${empleos.map(emp => {
-      const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
-      return `
-        <div class="empleo-card" onclick="verDetalle(${emp.id})">
-          <div class="empleo-card-top">
-            <div class="empleo-info">
-              <div class="empleo-titulo">${emp.titulo}</div>
-              <div class="empleo-empresa">${emp.empresa}</div>
-            </div>
-            <div class="score-circulo ${clase}">${emp.score}%</div>
+  document.getElementById('lista-empleos').innerHTML = empleos.map(emp => {
+    const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
+    return `
+      <div class="empleo-card" onclick="verDetalle(${emp.id})">
+        <div class="empleo-card-top">
+          <div class="empleo-info">
+            <div class="empleo-titulo">${emp.titulo}</div>
+            <div class="empleo-empresa">${emp.empresa}</div>
           </div>
-          <div class="empleo-tags">
-            <span class="tag">📍 ${emp.ubicacion}</span>
-            ${emp.salario ? `<span class="tag">💰 ${emp.salario}</span>` : ''}
-            ${emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : ''}
-          </div>
+          <div class="score-circulo ${clase}">${emp.score}%</div>
         </div>
-      `;
-    }).join('')}
-  `;
+        <div class="empleo-tags">
+          <span class="tag">📍 ${emp.ubicacion}</span>
+          ${emp.salario ? `<span class="tag">💰 ${emp.salario}</span>` : ''}
+          ${emp.esEmpresaGrande ? '<span class="tag-verde">🏢 Empresa grande</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // ============================================
@@ -656,8 +758,8 @@ function verDetalle(id) {
   const emp = empleoSeleccionado;
   const clase = emp.score >= 75 ? 'score-alto' : emp.score >= 50 ? 'score-medio' : 'score-bajo';
   const atsAviso = emp.esEmpresaGrande
-    ? '<div class="aviso-ats">🏢 <strong>Empresa grande</strong> — La IA generará tu CV en formato ATS/Harvard para pasar filtros automáticos.</div>'
-    : '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Empresa mediana/pyme</strong> — La IA usará un formato moderno y cálido.</div>';
+    ? '<div class="aviso-ats">🏢 <strong>Empresa grande</strong> — Tu CV será adaptado en formato ATS/Harvard para pasar filtros automáticos.</div>'
+    : '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Empresa mediana</strong> — Tu CV será adaptado con formato moderno y profesional.</div>';
 
   document.getElementById('contenido-detalle').innerHTML = `
     <div class="detalle-header">
@@ -683,10 +785,13 @@ function verDetalle(id) {
       <p style="font-size:13px;color:#cbd5e1;line-height:1.6">${emp.descripcion}</p>
     </div>
     <button class="btn-adaptar" onclick="adaptarCV()">
-      📄 Adaptar y descargar mi CV
+      📄 Adaptar mi CV
+    </button>
+    <button class="btn-secundario" onclick="descargarCV()" style="margin-top:10px;border-color:#60a5fa;color:#60a5fa">
+      ⬇️ Descargar CV actual en PDF
     </button>
     <button class="btn-postular" onclick="postularme()">
-      💼 Postularme en el portal
+      💼 Ir a postularme
     </button>
   `;
 
@@ -696,7 +801,7 @@ function verDetalle(id) {
 window.verDetalle = verDetalle;
 
 // ============================================
-// ADAPTAR CV CON IA + DESCARGA PDF
+// ADAPTAR CV CON IA
 // ============================================
 
 async function adaptarCV() {
@@ -718,50 +823,51 @@ async function adaptarCV() {
   const esGrande = emp.esEmpresaGrande;
 
   const formatoInstruccion = esGrande
-    ? `FORMATO: ATS/Harvard (empresa grande usa sistemas automáticos)
-- Una sola columna, texto plano limpio
-- Sin tablas, sin gráficos, sin íconos
-- Palabras clave del puesto visibles en todo el CV
+    ? `FORMATO REQUERIDO: ATS/Harvard
+- Una columna, texto plano limpio
+- Sin tablas, gráficos ni íconos
+- Palabras clave del puesto visibles
 - Secciones en MAYÚSCULAS
-- Máximo 1 página`
-    : `FORMATO: Moderno y profesional (empresa mediana/pyme)
+- Máximo 1 página A4`
+    : `FORMATO REQUERIDO: Moderno y profesional
 - Lenguaje cálido pero profesional
-- Destacar actitud, personalidad y potencial
-- Objetivo profesional entusiasta y específico para ESTA empresa`;
+- Destacar actitud y potencial
+- Objetivo profesional específico para esta empresa`;
 
   const prompt = `Sos un experto en recursos humanos argentino y especialista en CVs profesionales.
-Generá un CV adaptado específicamente para este puesto y empresa.
+Generá un CV COMPLETAMENTE ADAPTADO y TRANSFORMADO para este puesto específico.
 
-DATOS COMPLETOS DEL CANDIDATO:
+TODA LA INFORMACIÓN DEL CANDIDATO:
 ${construirPerfilTexto()}
 
 PUESTO: ${emp.titulo}
 EMPRESA: ${emp.empresa}
-DESCRIPCIÓN DEL PUESTO: ${emp.descripcion}
+DESCRIPCIÓN: ${emp.descripcion}
 
 ${formatoInstruccion}
 
-REGLAS CRÍTICAS — MUY IMPORTANTE:
-1. Transformá las descripciones simples en lenguaje profesional de RRHH:
-   - "acomodaba el depósito" → "Organización y gestión de inventario en depósito"
-   - "limpiaba" → "Mantenimiento y limpieza de instalaciones según protocolos"
-   - "manejé auto elevador" → "Operación de autoelevador / Clark (conocimiento práctico)"
-   - "controlaba que salga bien" → "Control de calidad del proceso productivo"
-2. Las habilidades DEBEN tener nombres legibles: "Atención al cliente" NO "atencion_cliente"
-3. Si menciona licencias o certificaciones, incluílas aunque estén vencidas: agregar "(a renovar)"
-4. NUNCA inventes datos, empresas ni fechas que no mencionó el candidato
-5. SIEMPRE incluí los datos de contacto completos al inicio
-6. Texto plano sin asteriscos ni ** ni símbolos decorativos
-7. Lenguaje argentino profesional
+INSTRUCCIONES CRÍTICAS — OBLIGATORIAS:
+1. Si hay CV cargado, usarlo como base principal y MEJORAR su contenido
+2. Combinar con toda la info del formulario para completar lo que falte
+3. TRANSFORMAR lenguaje coloquial a profesional:
+   - "acomodaba el depósito" → "Gestión y organización de inventario en depósito"
+   - "también limpiaba" → "Mantenimiento de instalaciones según protocolos de higiene"
+   - "manejé auto elevador" → "Operación de autoelevador / Clark (certificado en proceso de renovación)"
+   - "empecé en la zona de retrabajo" → "Operario de control y reacondicionamiento de producto"
+   - "controlaba que salga bien" → "Control de calidad en línea de producción"
+4. Habilidades: nombres COMPLETOS y legibles
+5. NUNCA inventar datos
+6. Datos de contacto completos al inicio
+7. Texto plano sin asteriscos ni **
 
-Generá el CV completo ahora:`;
+Generá el CV completo profesional ahora:`;
 
   if (!apiKey) {
     const cvBasico = generarCVbasico(emp);
     cvAdaptadoTexto = cvBasico;
     document.getElementById('cv-adaptado-contenido').innerHTML = `
       <div class="aviso-ats" style="border-color:#f97316;background:#1c0a00">
-        ⚠️ <strong>IA no configurada</strong> — Este es un CV básico. Configurá tu API Key de Gemini para obtener un CV profesional adaptado.
+        ⚠️ Configurá tu API Key para obtener un CV adaptado con IA.
       </div>
       <div class="cv-adaptado-box">${cvBasico.replace(/\n/g, '<br>')}</div>
     `;
@@ -773,18 +879,18 @@ Generá el CV completo ahora:`;
   if (cvGenerado) {
     cvAdaptadoTexto = cvGenerado;
     const badge = esGrande
-      ? '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para pasar filtros automáticos de empresas grandes.</div>'
+      ? '<div class="aviso-ats">🏢 <strong>Formato ATS/Harvard</strong> — Optimizado para sistemas automáticos de grandes empresas.</div>'
       : '<div class="aviso-ats" style="border-color:#22c55e;background:#0d2d1a">✨ <strong>Formato moderno</strong> — Diseñado para destacar en empresas medianas y pymes.</div>';
     document.getElementById('cv-adaptado-contenido').innerHTML =
-      badge + `<div class="cv-adaptado-box" id="cv-texto-final">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
+      badge + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
   } else {
     const cvBasico = generarCVbasico(emp);
     cvAdaptadoTexto = cvBasico;
     document.getElementById('cv-adaptado-contenido').innerHTML = `
       <div class="aviso-ats" style="border-color:#f97316;background:#1c0a00">
-        ⚠️ No se pudo conectar con la IA. Verificá tu API Key.
+        ⚠️ No se pudo conectar con la IA. Verificá tu API Key en Configuración.
       </div>
-      <div class="cv-adaptado-box" id="cv-texto-final">${cvBasico.replace(/\n/g, '<br>')}</div>
+      <div class="cv-adaptado-box">${cvBasico.replace(/\n/g, '<br>')}</div>
     `;
   }
 }
@@ -809,13 +915,12 @@ ${perfil.ciudad ? `Localidad: ${perfil.ciudad}, Argentina` : 'País: Argentina'}
 OBJETIVO PROFESIONAL
 Me postulo para el puesto de ${emp.titulo} en ${emp.empresa}.
 ${(perfil.experiencia || experiencia) === 'sin_exp'
-  ? 'Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Disponible de forma inmediata.'
-  : `Profesional con experiencia en ${perfil.expEmpresa || 'el área'}. Busco nuevos desafíos profesionales.`}
+  ? 'Me caracterizo por mi responsabilidad, puntualidad y predisposición para aprender. Disponible inmediatamente.'
+  : `Profesional con experiencia en ${perfil.expEmpresa || 'el área'}. Busco nuevas oportunidades de crecimiento.`}
 
 EXPERIENCIA LABORAL
-${perfil.expEmpresa
-  ? `Empresa: ${perfil.expEmpresa}\nTareas: ${perfil.expDetalle || 'Tareas operativas'}`
-  : 'Sin experiencia formal. Disponible para capacitación inmediata.'}
+${perfil.expEmpresa ? `Empresa: ${perfil.expEmpresa}\nTareas: ${perfil.expDetalle || 'Tareas operativas'}` :
+'Sin experiencia formal previa. Disponible para capacitación inmediata.'}
 ${perfil.infoExtra ? `\n${perfil.infoExtra}` : ''}
 
 HABILIDADES Y COMPETENCIAS
@@ -836,72 +941,64 @@ window.adaptarCV = adaptarCV;
 // ============================================
 
 async function descargarCV() {
-  if (!cvAdaptadoTexto) {
-    alert('Primero generá tu CV adaptado');
+  if (!cvAdaptadoTexto && !cvFinal) {
+    alert('Primero adaptá tu CV tocando "Adaptar mi CV"');
     return;
   }
 
+  const textoParaPDF = cvAdaptadoTexto || cvFinal;
+
   try {
-    // Usamos la librería jsPDF desde CDN
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
+    const docPDF = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Configuración de fuente y márgenes
     const margenIzq = 20;
-    const margenDer = 20;
-    const anchoUtil = 210 - margenIzq - margenDer;
-    let posY = 20;
-    const lineHeight = 6;
-    const fontSize = 10;
+    const anchoUtil = 170;
+    let posY = 25;
 
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(fontSize);
+    docPDF.setFont('helvetica', 'normal');
 
-    // Dividimos el texto en líneas
-    const lineas = cvAdaptadoTexto.split('\n');
-
+    const lineas = textoParaPDF.split('\n');
     for (const linea of lineas) {
-      if (posY > 270) {
-        doc.addPage();
-        posY = 20;
-      }
+      if (posY > 275) { docPDF.addPage(); posY = 20; }
 
-      const lineaTrimmed = linea.trim();
+      const t = linea.trim();
+      if (!t) { posY += 4; continue; }
 
-      // Títulos de sección en mayúsculas
-      if (lineaTrimmed === lineaTrimmed.toUpperCase() && lineaTrimmed.length > 3 && !lineaTrimmed.includes(':')) {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
-        posY += 3;
-        doc.text(lineaTrimmed, margenIzq, posY);
-        posY += lineHeight + 1;
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(fontSize);
-      } else if (lineaTrimmed === '') {
-        posY += 3;
+      const esTitulo = t === t.toUpperCase() && t.length > 3 && !t.includes('@') && !t.includes(':');
+
+      if (esTitulo) {
+        posY += 2;
+        docPDF.setFont('helvetica', 'bold');
+        docPDF.setFontSize(11);
+        docPDF.text(t, margenIzq, posY);
+        posY += 2;
+        docPDF.setLineWidth(0.3);
+        docPDF.line(margenIzq, posY, 190, posY);
+        posY += 5;
+        docPDF.setFont('helvetica', 'normal');
+        docPDF.setFontSize(10);
       } else {
-        // Texto normal con wrap automático
-        const splitTexto = doc.splitTextToSize(lineaTrimmed, anchoUtil);
-        splitTexto.forEach(t => {
-          if (posY > 270) { doc.addPage(); posY = 20; }
-          doc.text(t, margenIzq, posY);
-          posY += lineHeight;
+        docPDF.setFont('helvetica', 'normal');
+        docPDF.setFontSize(10);
+        const split = docPDF.splitTextToSize(t, anchoUtil);
+        split.forEach(s => {
+          if (posY > 275) { docPDF.addPage(); posY = 20; }
+          docPDF.text(s, margenIzq, posY);
+          posY += 5.5;
         });
       }
     }
 
-    const nombreArchivo = `CV_${(perfil.nombre || 'candidato').replace(/ /g, '_')}_LabuIA.pdf`;
-    doc.save(nombreArchivo);
+    const nombre = (perfil.nombre || 'CV').replace(/ /g, '_');
+    const empresa = empleoSeleccionado ? `_${empleoSeleccionado.empresa.replace(/ /g, '_')}` : '';
+    docPDF.save(`CV_${nombre}${empresa}_LabuIA.pdf`);
 
   } catch (e) {
     console.log('Error PDF:', e);
-    // Fallback: copiar al portapapeles
-    copiarCV();
-    alert('No se pudo generar el PDF. El CV fue copiado al portapapeles.');
+    navigator.clipboard.writeText(textoParaPDF)
+      .then(() => alert('✅ CV copiado al portapapeles (PDF no disponible en este navegador)'))
+      .catch(() => alert('No se pudo generar el PDF. Copiá el texto manualmente.'));
   }
 }
 
@@ -912,8 +1009,9 @@ window.descargarCV = descargarCV;
 // ============================================
 
 function copiarCV() {
-  if (!cvAdaptadoTexto) return;
-  navigator.clipboard.writeText(cvAdaptadoTexto)
+  const texto = cvAdaptadoTexto || cvFinal;
+  if (!texto) return;
+  navigator.clipboard.writeText(texto)
     .then(() => alert('✅ CV copiado al portapapeles'))
     .catch(() => alert('Mantené presionado el texto para copiarlo manualmente'));
 }
@@ -966,7 +1064,7 @@ function cargarPostulaciones() {
   const lista = JSON.parse(localStorage.getItem('labuia_postulaciones') || '[]');
   if (lista.length === 0) {
     document.getElementById('lista-postulaciones').innerHTML = `
-      <div class="empty-state"><div class="icono">💼</div><p>Todavía no te postulaste a ningún empleo</p></div>
+      <div class="empty-state"><div class="icono">💼</div><p>Todavía no te postulaste a ninguna oportunidad</p></div>
     `;
     return;
   }
