@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LabuIA - Empleos con IA</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -69,10 +71,20 @@
         <label>¿En qué barrio o ciudad vivís?</label>
         <input type="text" id="ciudad" placeholder="Ej: José C. Paz, Zona Norte GBA">
         <label>¿Hasta dónde podés viajar?</label>
-        <div class="toggles">
-          <button class="toggle activo" data-valor="zona">Mi zona</button>
-          <button class="toggle" data-valor="amba">Todo AMBA</button>
-          <button class="toggle" data-valor="cualquier">Cualquier lugar</button>
+        <div id="mapa-radio" style="height:200px;border-radius:12px;overflow:hidden;margin-top:8px;border:1px solid #1e3a6e"></div>
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span style="color:#8899aa;font-size:12px">Radio de búsqueda</span>
+            <span id="radio-km-valor" style="color:#7c3aed;font-weight:700;font-size:14px">20 km</span>
+          </div>
+          <input type="range" id="radio-km-slider" min="5" max="100" step="5" value="20"
+            style="width:100%;accent-color:#7c3aed"
+            oninput="actualizarSliderMapa(this.value)">
+          <div style="display:flex;justify-content:space-between;color:#8899aa;font-size:10px;margin-top:4px">
+            <span>5 km</span>
+            <span>50 km</span>
+            <span>100 km</span>
+          </div>
         </div>
       </div>
 
@@ -368,5 +380,12 @@
   </nav>
 
   <script type="module" src="app.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        if (typeof window.inicializarMapa === 'function') window.inicializarMapa();
+      }, 800);
+    });
+  </script>
 </body>
 </html>
