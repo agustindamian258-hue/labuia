@@ -604,6 +604,10 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
       body
     });
 
+    if (!response.ok) {
+      alert(`DEBUG Jooble directo - Status: ${response.status} ${response.statusText}`);
+    }
+
     if (response.ok) {
       const data = await response.json();
       if (data.jobs && data.jobs.length > 0) {
@@ -620,10 +624,12 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
           score: 0,
           analisis: null
         }));
+      } else {
+        alert('DEBUG Jooble directo - OK pero sin jobs en la respuesta: ' + JSON.stringify(data).substring(0, 200));
       }
     }
   } catch (e) {
-    console.log('Error Jooble directo:', e);
+    alert('DEBUG Jooble directo - ERROR: ' + e.message);
   }
 
   // Proxy si falla directo
@@ -651,9 +657,11 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
         score: 0,
         analisis: null
       }));
+    } else {
+      alert('DEBUG Jooble proxy - OK pero sin jobs: ' + JSON.stringify(data).substring(0, 200));
     }
   } catch (e) {
-    console.log('Error Jooble proxy:', e);
+    alert('DEBUG Jooble proxy - ERROR: ' + e.message);
   }
 
   return generarEmpleosRespaldo(puesto, ciudad);
