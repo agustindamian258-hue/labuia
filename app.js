@@ -6,8 +6,6 @@ import { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, 
   browserLocalPersistence, setPersistence }
   from './firebase-config.js';
 
-const JOOBLE_API_KEY = '9a26ed6d-5b55-40aa-807f-e5ea117782ca';
-
 let perfil = {};
 let modalidad = 'presencial';
 let viaje = 'zona';
@@ -585,64 +583,25 @@ async function buscarEmpleos(puesto, ciudad) {
 }
 
 // ============================================
-// JOOBLE API
+// JOOBLE API (vía proxy propio en Vercel: /api/jooble)
+// La key NUNCA viaja al navegador y el location se normaliza
+// del lado del servidor para evitar totalCount:0
 // ============================================
 
 async function obtenerEmpleosJooble(puesto, ciudad) {
   try {
-    const body = JSON.stringify({
-      keywords: puesto,
-      location: ciudad || 'Argentina',
-      page: 1,
-      resultsOnPage: 20
-    });
-
-    // Intento directo a Jooble
-    const response = await fetch(`https://jooble.org/api/${JOOBLE_API_KEY}`, {
+    const response = await fetch('/api/jooble', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body
+      body: JSON.stringify({ keywords: puesto, location: ciudad || '' })
     });
 
     if (!response.ok) {
-      alert(`DEBUG Jooble directo - Status: ${response.status} ${response.statusText}`);
+      console.log('Proxy /api/jooble respondió error:', response.status);
     }
 
-    if (response.ok) {
-      const data = await response.json();
-      if (data.jobs && data.jobs.length > 0) {
-        return data.jobs.slice(0, 15).map((job, i) => ({
-          id: i + 1,
-          titulo: job.title || puesto,
-          empresa: job.company || 'Empresa confidencial',
-          ubicacion: job.location || ciudad || 'Argentina',
-          descripcion: (job.snippet || '').replace(/<[^>]*>/g, '').substring(0, 600),
-          link: job.link,
-          salario: job.salary || '',
-          fuente: 'Jooble',
-          esEmpresaGrande: detectarEmpresaGrande(job.company || ''),
-          score: 0,
-          analisis: null
-        }));
-      } else {
-        alert('DEBUG Jooble directo - OK pero sin jobs en la respuesta: ' + JSON.stringify(data).substring(0, 200));
-      }
-    }
-  } catch (e) {
-    alert('DEBUG Jooble directo - ERROR: ' + e.message);
-  }
+    const data = await response.json().catch(() => ({}));
 
-  // Proxy si falla directo
-  try {
-    const response = await fetch(
-      `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://jooble.org/api/${JOOBLE_API_KEY}`)}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keywords: puesto, location: ciudad || 'Argentina', page: 1, resultsOnPage: 20 })
-      }
-    );
-    const data = await response.json();
     if (data.jobs && data.jobs.length > 0) {
       return data.jobs.slice(0, 15).map((job, i) => ({
         id: i + 1,
@@ -657,11 +616,11 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
         score: 0,
         analisis: null
       }));
-    } else {
-      alert('DEBUG Jooble proxy - OK pero sin jobs: ' + JSON.stringify(data).substring(0, 200));
     }
+
+    console.log('Jooble sin resultados, usando respaldo. Respuesta:', data);
   } catch (e) {
-    alert('DEBUG Jooble proxy - ERROR: ' + e.message);
+    console.log('Error llamando a /api/jooble:', e.message);
   }
 
   return generarEmpleosRespaldo(puesto, ciudad);
