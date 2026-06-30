@@ -1144,8 +1144,8 @@ function inicializarMapa() {
   if (!contenedor) return;
 
   // Posición por defecto: Buenos Aires centro
-  const lat = -34.6037;
-  const lng = -58.3816;
+  let lat = -34.6037;
+  let lng = -58.3816;
 
   mapaLeaflet = L.map('mapa-radio', {
     zoomControl: false,
@@ -1153,7 +1153,7 @@ function inicializarMapa() {
     scrollWheelZoom: false,
     doubleClickZoom: false,
     touchZoom: false
-  }).setView([lat, lng], 11);
+  }).setView([lat, lng], calcularZoom(radioKm));
 
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© OpenStreetMap'
@@ -1171,21 +1171,34 @@ function inicializarMapa() {
     radius: radioKm * 1000,
     color: '#7c3aed',
     fillColor: '#7c3aed',
-    fillOpacity: 0.12,
-    weight: 2
+    fillOpacity: 0.15,
+    weight: 3
   }).addTo(mapaLeaflet);
+
+  function actualizarPosicion(la, ln) {
+    lat = la; lng = ln;
+    marcadorUbicacion.setLatLng([lat, lng]);
+    circuloRadio.setLatLng([lat, lng]);
+    mapaLeaflet.setView([lat, lng], calcularZoom(radioKm));
+  }
 
   // Intentar geolocalización
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
-      const { latitude, longitude } = pos.coords;
-      mapaLeaflet.setView([latitude, longitude], 11);
-      marcadorUbicacion.setLatLng([latitude, longitude]);
-      circuloRadio.setLatLng([latitude, longitude]);
+      actualizarPosicion(pos.coords.latitude, pos.coords.longitude);
     }, () => {
       // Si no da permiso, queda Buenos Aires
-    });
+    }, { enableHighAccuracy: true, timeout: 5000 });
   }
+}
+
+function calcularZoom(km) {
+  if (km <= 10) return 12;
+  if (km <= 20) return 11;
+  if (km <= 35) return 10;
+  if (km <= 50) return 9;
+  if (km <= 75) return 8;
+  return 7;
 }
 
 function actualizarSliderMapa(km) {
@@ -1196,10 +1209,9 @@ function actualizarSliderMapa(km) {
     circuloRadio.setRadius(radioKm * 1000);
   }
 
-  // Ajustar zoom según radio
-  if (mapaLeaflet) {
-    const zoom = radioKm <= 10 ? 13 : radioKm <= 25 ? 12 : radioKm <= 50 ? 11 : 10;
-    mapaLeaflet.setZoom(zoom);
+  if (mapaLeaflet && marcadorUbicacion) {
+    const centro = marcadorUbicacion.getLatLng();
+    mapaLeaflet.setView(centro, calcularZoom(radioKm));
   }
 }
 
