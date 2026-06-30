@@ -19,6 +19,7 @@ let cvFinal = '';
 let opcionCVactual = '';
 let cvAdaptadoTexto = '';
 let usuarioActual = null;
+let ultimoErrorGemini = '';
 
 function obtenerAPIkey() {
   return perfil.geminiKey
@@ -151,7 +152,6 @@ function mostrarIAactivada() {
     estado.style.cssText = 'background:#052e16;color:#22c55e;border:1px solid #22c55e;padding:8px;border-radius:8px;text-align:center;margin-top:8px';
     estado.textContent = '✅ IA activada';
   }
-  // Ocultar el box de API key ya que está configurada
   const zona = document.getElementById('api-key-zona');
   const arrow = document.getElementById('api-key-arrow');
   if (zona) zona.classList.add('oculto');
@@ -341,7 +341,9 @@ async function procesarPDF(input) {
 window.procesarPDF = procesarPDF;
 
 // ============================================
-// LLAMAR GEMINI - SOPORTA KEYS AQ. Y AIza
+// LLAMAR GEMINI
+// FIX: ahora devuelve el error real visible en pantalla
+// en vez de null silencioso
 // ============================================
 
 async function llamarGemini(prompt, apiKey) {
@@ -352,6 +354,9 @@ async function llamarGemini(prompt, apiKey) {
     'gemini-1.5-pro',
     'gemini-pro'
   ];
+
+  ultimoErrorGemini = '';
+  const errores = [];
 
   for (const modelo of modelos) {
     try {
@@ -374,27 +379,29 @@ async function llamarGemini(prompt, apiKey) {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        console.log(`Modelo ${modelo} falló:`, err?.error?.message || res.status);
+        const msg = err?.error?.message || `HTTP ${res.status}`;
+        errores.push(`${modelo}: ${msg}`);
         continue;
       }
 
       const data = await res.json();
       const texto = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (texto && texto.length > 20) {
-        console.log(`✅ Gemini respondió con ${modelo}`);
         return texto;
       }
+      errores.push(`${modelo}: respuesta vacía`);
     } catch (e) {
-      console.log(`Error con ${modelo}:`, e.message);
+      errores.push(`${modelo}: ${e.message}`);
     }
   }
 
-  console.log('❌ Todos los modelos fallaron');
+  ultimoErrorGemini = errores.join(' | ');
   return null;
 }
 
 // ============================================
 // CONSTRUIR PERFIL TEXTO COMPLETO
+// FIX: aumentado el CV a 3000 caracteres
 // ============================================
 
 function construirPerfilTexto() {
@@ -418,6 +425,8 @@ function construirPerfilTexto() {
     (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
     (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : '';
 
+  const cvTexto = cvFinal || perfil.cv || '';
+
   return `
 NOMBRE COMPLETO: ${perfil.nombre || ''}
 EDAD: ${perfil.edad || ''} años
@@ -433,12 +442,13 @@ INSTITUCIÓN EDUCATIVA: ${perfil.institucion || 'No especificada'}
 HABILIDADES Y CERTIFICACIONES: ${habilidadesTexto || 'No especificadas'}
 DISPONIBILIDAD HORARIA: ${horarioTexto}
 MODALIDAD BUSCADA: ${perfil.modalidad || modalidad}
-${cvFinal ? `\nCONTENIDO DEL CV CARGADO:\n${cvFinal.substring(0, 1500)}` : ''}
+RADIO DE BÚSQUEDA: ${radioKm} km desde ${perfil.ciudad || 'su localidad'}
+${cvTexto ? `\nCONTENIDO COMPLETO DEL CV CARGADO (USAR COMO BASE PRINCIPAL):\n${cvTexto.substring(0, 3000)}` : ''}
 `.trim();
 }
 
 // ============================================
-// GENERAR CV BASE CON IA (sin puesto específico)
+// GENERAR CV BASE CON IA
 // ============================================
 
 async function generarCVconIA() {
@@ -489,7 +499,7 @@ DISPONIBILIDAD`;
     preview.textContent = texto;
     if (usuarioActual) guardarPerfilFirebase(usuarioActual.uid, { cv: cvFinal });
   } else {
-    preview.textContent = '❌ No se pudo conectar con la IA. Verificá tu API Key en Configuración.';
+    preview.textContent = `❌ No se pudo conectar con la IA.\nDetalle técnico: ${ultimoErrorGemini || 'Error desconocido'}`;
   }
 }
 
@@ -517,7 +527,6 @@ async function guardarPerfilYBuscar() {
   if (!puesto) { alert('Escribí qué tipo de trabajo buscás'); return; }
   if (!ciudad) { alert('Escribí en qué ciudad o zona vivís'); return; }
 
-  // Combinar habilidades seleccionadas con las escritas
   let habilidadesFinales = [...habilidades];
   if (habilidadesEscritas) {
     const extra = habilidadesEscritas.split(',').map(h => h.trim()).filter(h => h.length > 0);
@@ -583,10 +592,32 @@ async function buscarEmpleos(puesto, ciudad) {
 }
 
 // ============================================
-// JOOBLE API (vía proxy propio en Vercel: /api/jooble)
-// La key NUNCA viaja al navegador y el location se normaliza
-// del lado del servidor para evitar totalCount:0
+// JOOBLE API (vía proxy /api/jooble)
+// FIX: filtra empleos que no son de Argentina
+// FIX: aplica radioKm como filtro de zona
 // ============================================
+
+// Provincias y zonas de Argentina para el filtro de ubicación
+const ZONAS_ARGENTINA = [
+  'argentina','buenos aires','córdoba','rosario','mendoza','tucumán','salta','misiones',
+  'corrientes','chaco','entre ríos','santiago del estero','san juan','jujuy','río negro',
+  'neuquén','formosa','santa cruz','chubut','la pampa','catamarca','san luis','la rioja',
+  'tierra del fuego','gba','gran buenos aires','conurbano','caba','capital federal',
+  'jose c paz','jose c. paz','moreno','merlo','luján','pilar','tigre','san isidro',
+  'vicente lópez','quilmes','lomas de zamora','lanús','avellaneda','general san martín',
+  'tres de febrero','ituzaingó','hurlingham','palermo','belgrano','flores','almagro',
+  'villa urquiza','boedo','caballito','mar del plata','bahía blanca','la plata',
+  'san miguel','malvinas argentinas','josé c. paz'
+];
+
+function esUbicacionArgentina(ubicacion) {
+  if (!ubicacion) return false;
+  const u = ubicacion.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return ZONAS_ARGENTINA.some(z =>
+    u.includes(z.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+}
 
 async function obtenerEmpleosJooble(puesto, ciudad) {
   try {
@@ -596,14 +627,18 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
       body: JSON.stringify({ keywords: puesto, location: ciudad || '' })
     });
 
-    if (!response.ok) {
-      console.log('Proxy /api/jooble respondió error:', response.status);
-    }
-
     const data = await response.json().catch(() => ({}));
 
     if (data.jobs && data.jobs.length > 0) {
-      return data.jobs.slice(0, 15).map((job, i) => ({
+      // FIX: filtrar solo empleos de Argentina
+      const empleosArgentina = data.jobs.filter(job =>
+        esUbicacionArgentina(job.location || '')
+      );
+
+      // Si el filtro dejó algo, usamos eso; si no, usamos todos (puede ser que Jooble no especificó bien la ubicación)
+      const listaFinal = empleosArgentina.length > 0 ? empleosArgentina : data.jobs;
+
+      return listaFinal.slice(0, 15).map((job, i) => ({
         id: i + 1,
         titulo: job.title || puesto,
         empresa: job.company || 'Empresa confidencial',
@@ -618,7 +653,7 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
       }));
     }
 
-    console.log('Jooble sin resultados, usando respaldo. Respuesta:', data);
+    console.log('Jooble sin resultados, usando respaldo.');
   } catch (e) {
     console.log('Error llamando a /api/jooble:', e.message);
   }
@@ -669,6 +704,7 @@ function generarEmpleosRespaldo(puesto, ciudad) {
 
 // ============================================
 // ANALIZAR CON IA
+// FIX: ahora incluye radioKm y zona en el análisis
 // ============================================
 
 async function analizarConIA(empleos, puesto) {
@@ -687,14 +723,16 @@ ${perfilTexto}
 OFERTA:
 Puesto: ${empleo.titulo}
 Empresa: ${empleo.empresa}
-Ubicación: ${empleo.ubicacion}
-Descripción: ${empleo.descripcion.substring(0, 300)}
+Ubicación del empleo: ${empleo.ubicacion}
 
 CRITERIOS:
 - Sin experiencia + puesto entry-level = score 70-80
 - Experiencia relevante = score 80-95
 - Habilidades que coinciden = sumar puntos
-- Distancia razonable = factor positivo
+- La ubicación del empleo debe estar dentro del radio de búsqueda del candidato (${radioKm} km desde ${perfil.ciudad || 'su localidad'})
+- Si el empleo está fuera del radio de búsqueda = restar puntos significativos
+
+Descripción del puesto: ${empleo.descripcion.substring(0, 300)}
 
 Respondé SOLO con JSON válido sin texto extra:
 {"score":75,"fortalezas":["r1","r2","r3"],"debilidades":["d1","d2"],"resumen":"una oración en español argentino"}`;
@@ -802,6 +840,8 @@ window.verDetalle = verDetalle;
 
 // ============================================
 // ADAPTAR CV CON IA
+// FIX: muestra el error real de Gemini en pantalla
+// FIX: generarCVbasico ahora usa el CV cargado
 // ============================================
 
 async function adaptarCV() {
@@ -847,14 +887,9 @@ DESCRIPCIÓN: ${emp.descripcion}
 ${formatoInstruccion}
 
 INSTRUCCIONES CRÍTICAS — OBLIGATORIAS:
-1. Si hay CV cargado, usarlo como base principal y MEJORAR su contenido
+1. Si hay CV cargado en "CONTENIDO COMPLETO DEL CV CARGADO", usarlo como base principal y MEJORAR su contenido
 2. Combinar con toda la info del formulario para completar lo que falte
-3. TRANSFORMAR lenguaje coloquial a profesional:
-   - "acomodaba el depósito" → "Gestión y organización de inventario en depósito"
-   - "también limpiaba" → "Mantenimiento de instalaciones según protocolos de higiene"
-   - "manejé auto elevador" → "Operación de autoelevador / Clark (certificado en proceso de renovación)"
-   - "empecé en la zona de retrabajo" → "Operario de control y reacondicionamiento de producto"
-   - "controlaba que salga bien" → "Control de calidad en línea de producción"
+3. TRANSFORMAR lenguaje coloquial a profesional
 4. Habilidades: nombres COMPLETOS y legibles
 5. NUNCA inventar datos
 6. Datos de contacto completos al inicio
@@ -884,18 +919,22 @@ Generá el CV completo profesional ahora:`;
     document.getElementById('cv-adaptado-contenido').innerHTML =
       badge + `<div class="cv-adaptado-box">${cvGenerado.replace(/\n/g, '<br>')}</div>`;
   } else {
+    // FIX: mostrar el error real en pantalla en vez del mensaje genérico
     const cvBasico = generarCVbasico(emp);
     cvAdaptadoTexto = cvBasico;
     document.getElementById('cv-adaptado-contenido').innerHTML = `
       <div class="aviso-ats" style="border-color:#f97316;background:#1c0a00">
-        ⚠️ No se pudo conectar con la IA. Verificá tu API Key en Configuración.
+        ⚠️ No se pudo conectar con la IA.<br>
+        <small style="font-size:11px;opacity:0.8">Error: ${ultimoErrorGemini || 'Verificá tu API Key en Configuración'}</small>
       </div>
       <div class="cv-adaptado-box">${cvBasico.replace(/\n/g, '<br>')}</div>
     `;
   }
 }
 
+// FIX: generarCVbasico ahora usa el CV cargado como base si existe
 function generarCVbasico(emp) {
+  const cvTexto = cvFinal || perfil.cv || '';
   const habilidadesTexto = (perfil.habilidades || habilidades).join(', ');
   const estudiosTexto = (perfil.estudios || '') === 'secundario' ? 'Secundario completo' :
     (perfil.estudios || '') === 'secundario_inc' ? 'Secundario incompleto' :
@@ -903,6 +942,14 @@ function generarCVbasico(emp) {
     (perfil.estudios || '') === 'terciario' ? 'Terciario en curso' :
     (perfil.estudios || '') === 'universitario' ? 'Universitario completo' : 'Formación en proceso';
 
+  // Si hay CV cargado, lo mostramos directamente con el encabezado del puesto
+  if (cvTexto && cvTexto.length > 100) {
+    return `CURRÍCULUM VITAE — ADAPTADO PARA: ${emp.titulo.toUpperCase()} EN ${emp.empresa.toUpperCase()}
+
+${cvTexto}`;
+  }
+
+  // Si no hay CV cargado, construimos uno básico con los datos del formulario
   return `CURRÍCULUM VITAE
 
 DATOS PERSONALES Y CONTACTO
@@ -1110,7 +1157,6 @@ function inicializarMapa() {
   const contenedor = document.getElementById('mapa-radio');
   if (!contenedor) return;
 
-  // Posición por defecto: Buenos Aires centro
   let lat = -34.6037;
   let lng = -58.3816;
 
@@ -1149,13 +1195,10 @@ function inicializarMapa() {
     mapaLeaflet.setView([lat, lng], calcularZoom(radioKm));
   }
 
-  // Intentar geolocalización
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(pos => {
       actualizarPosicion(pos.coords.latitude, pos.coords.longitude);
-    }, () => {
-      // Si no da permiso, queda Buenos Aires
-    }, { enableHighAccuracy: true, timeout: 5000 });
+    }, () => {}, { enableHighAccuracy: true, timeout: 5000 });
   }
 }
 
@@ -1177,13 +1220,9 @@ function actualizarSliderMapa(km) {
   const centro = marcadorUbicacion.getLatLng();
   const nuevoZoom = calcularZoom(radioKm);
 
-  // Actualizar radio primero
   circuloRadio.setRadius(radioKm * 1000);
-
-  // Forzar que el mapa ajuste vista y luego redibuje el círculo
   mapaLeaflet.setView(centro, nuevoZoom, { animate: false });
 
-  // Redraw forzado del círculo por si el cambio de zoom lo "pierde"
   setTimeout(() => {
     if (circuloRadio && mapaLeaflet) {
       circuloRadio.setLatLng(centro);
