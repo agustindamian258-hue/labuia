@@ -1205,14 +1205,25 @@ function actualizarSliderMapa(km) {
   radioKm = parseInt(km);
   document.getElementById('radio-km-valor').textContent = `${radioKm} km`;
 
-  if (circuloRadio) {
-    circuloRadio.setRadius(radioKm * 1000);
-  }
+  if (!mapaLeaflet || !circuloRadio || !marcadorUbicacion) return;
 
-  if (mapaLeaflet && marcadorUbicacion) {
-    const centro = marcadorUbicacion.getLatLng();
-    mapaLeaflet.setView(centro, calcularZoom(radioKm));
-  }
+  const centro = marcadorUbicacion.getLatLng();
+  const nuevoZoom = calcularZoom(radioKm);
+
+  // Actualizar radio primero
+  circuloRadio.setRadius(radioKm * 1000);
+
+  // Forzar que el mapa ajuste vista y luego redibuje el círculo
+  mapaLeaflet.setView(centro, nuevoZoom, { animate: false });
+
+  // Redraw forzado del círculo por si el cambio de zoom lo "pierde"
+  setTimeout(() => {
+    if (circuloRadio && mapaLeaflet) {
+      circuloRadio.setLatLng(centro);
+      circuloRadio.setRadius(radioKm * 1000);
+      mapaLeaflet.invalidateSize();
+    }
+  }, 50);
 }
 
 window.actualizarSliderMapa = actualizarSliderMapa;
