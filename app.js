@@ -11,6 +11,7 @@ const JOOBLE_API_KEY = '9a26ed6d-5b55-40aa-807f-e5ea117782ca';
 let perfil = {};
 let modalidad = 'presencial';
 let viaje = 'zona';
+let radioKm = 20;
 let experiencia = 'sin_exp';
 let horarios = ['cualquier_horario'];
 let habilidades = [];
@@ -125,7 +126,11 @@ async function cargarPerfilFirebase(uid) {
       }
 
       if (datos.modalidad) { modalidad = datos.modalidad; actualizarToggle('modalidad', modalidad); }
-      if (datos.viaje) { viaje = datos.viaje; actualizarToggleSimple(viaje); }
+      if (datos.radioKm) {
+        radioKm = datos.radioKm;
+        const slider = document.getElementById('radio-km-slider');
+        if (slider) { slider.value = radioKm; actualizarSliderMapa(radioKm); }
+      }
       if (datos.experiencia) {
         experiencia = datos.experiencia;
         actualizarToggle('experiencia', experiencia);
@@ -526,7 +531,7 @@ async function guardarPerfilYBuscar() {
     puestoBuscado: puesto, salario,
     estudios: estudiosVal, institucion,
     experiencia, expEmpresa, expDetalle, infoExtra,
-    modalidad, viaje,
+    modalidad, radioKm,
     horarios, habilidades: habilidadesFinales,
     cv: cvFinal,
     fotoPerfil: perfil.fotoPerfil || '',
@@ -1123,3 +1128,80 @@ function cargarPostulaciones() {
 }
 
 window.cargarPostulaciones = cargarPostulaciones;
+
+// ============================================
+// MAPA DE RADIO CON LEAFLET
+// ============================================
+
+let mapaLeaflet = null;
+let circuloRadio = null;
+let marcadorUbicacion = null;
+
+function inicializarMapa() {
+  if (mapaLeaflet) return;
+
+  const contenedor = document.getElementById('mapa-radio');
+  if (!contenedor) return;
+
+  // Posición por defecto: Buenos Aires centro
+  const lat = -34.6037;
+  const lng = -58.3816;
+
+  mapaLeaflet = L.map('mapa-radio', {
+    zoomControl: false,
+    dragging: false,
+    scrollWheelZoom: false,
+    doubleClickZoom: false,
+    touchZoom: false
+  }).setView([lat, lng], 11);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap'
+  }).addTo(mapaLeaflet);
+
+  marcadorUbicacion = L.circleMarker([lat, lng], {
+    radius: 8,
+    fillColor: '#7c3aed',
+    color: '#ffffff',
+    weight: 2,
+    fillOpacity: 1
+  }).addTo(mapaLeaflet);
+
+  circuloRadio = L.circle([lat, lng], {
+    radius: radioKm * 1000,
+    color: '#7c3aed',
+    fillColor: '#7c3aed',
+    fillOpacity: 0.12,
+    weight: 2
+  }).addTo(mapaLeaflet);
+
+  // Intentar geolocalización
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude, longitude } = pos.coords;
+      mapaLeaflet.setView([latitude, longitude], 11);
+      marcadorUbicacion.setLatLng([latitude, longitude]);
+      circuloRadio.setLatLng([latitude, longitude]);
+    }, () => {
+      // Si no da permiso, queda Buenos Aires
+    });
+  }
+}
+
+function actualizarSliderMapa(km) {
+  radioKm = parseInt(km);
+  document.getElementById('radio-km-valor').textContent = `${radioKm} km`;
+
+  if (circuloRadio) {
+    circuloRadio.setRadius(radioKm * 1000);
+  }
+
+  // Ajustar zoom según radio
+  if (mapaLeaflet) {
+    const zoom = radioKm <= 10 ? 13 : radioKm <= 25 ? 12 : radioKm <= 50 ? 11 : 10;
+    mapaLeaflet.setZoom(zoom);
+  }
+}
+
+window.actualizarSliderMapa = actualizarSliderMapa;
+window.inicializarMapa = inicializarMapa;
