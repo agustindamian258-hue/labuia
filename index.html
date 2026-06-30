@@ -39,8 +39,23 @@
     </div>
     <div class="contenido">
       <h2>Tu perfil</h2>
-      <p class="subtitulo">Completá tus datos para encontrar los mejores empleos</p>
+      <p class="subtitulo">Completá tus datos para encontrar las mejores oportunidades</p>
 
+      <!-- FOTO DE PERFIL -->
+      <div class="seccion-form">
+        <div class="seccion-form-titulo">📸 Tu foto (opcional)</div>
+        <div class="foto-perfil-container" onclick="document.getElementById('input-foto').click()">
+          <img id="preview-foto" src="" style="display:none;width:80px;height:80px;border-radius:50%;object-fit:cover">
+          <div id="foto-placeholder" class="foto-placeholder">
+            <span>📷</span>
+            <small>Agregar foto</small>
+          </div>
+        </div>
+        <input type="file" id="input-foto" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)">
+        <p style="color:#8899aa;font-size:11px;text-align:center;margin-top:6px">Algunos CVs con diseño incluyen foto</p>
+      </div>
+
+      <!-- DATOS PERSONALES -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">👤 Datos personales</div>
         <label>Tu nombre completo</label>
@@ -61,6 +76,7 @@
         </div>
       </div>
 
+      <!-- EDUCACIÓN -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">📚 Educación</div>
         <label>Nivel de estudios</label>
@@ -76,6 +92,7 @@
         <input type="text" id="institucion" placeholder="Ej: EEST N°1 de San Miguel, UTN...">
       </div>
 
+      <!-- EXPERIENCIA -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">💼 Tu experiencia laboral</div>
         <label>¿Tenés experiencia laboral?</label>
@@ -88,13 +105,14 @@
         <div id="zona-experiencia-detalle" class="oculto">
           <label>¿En qué lugar o empresa trabajaste?</label>
           <input type="text" id="experiencia-empresa" placeholder="Ej: Fábrica textil, CCU Argentina, Carrefour...">
-          <label>Contame qué hacías ahí en el día a día (escribilo como te salga)</label>
-          <textarea id="experiencia-detalle" placeholder="Ej: En la textil me tocaba armar los rollos de tela y cargar las cajas. En CCU controlaba las máquinas y limpiaba el sector..."></textarea>
+          <label>Contame qué hacías en el día a día (escribilo como te salga)</label>
+          <textarea id="experiencia-detalle" placeholder="Ej: En la textil armaba los rollos de tela y cargaba cajas. En CCU controlaba las máquinas y limpiaba el sector..."></textarea>
         </div>
-        <label style="margin-top:16px">¿Algo más que sepas hacer o aclaración para la IA?</label>
-        <textarea id="info-extra" placeholder="Ej: Manejé auto-elevador por poco tiempo pero sé usarlo. Tengo el carnet para actualizar..."></textarea>
+        <label style="margin-top:16px">¿Algo más que sepas hacer? (opcional)</label>
+        <textarea id="info-extra" placeholder="Ej: Manejé auto-elevador por poco tiempo pero sé usarlo. Tengo el carnet vencido para renovar..."></textarea>
       </div>
 
+      <!-- QUÉ BUSCÁS -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">🔍 Qué trabajo buscás</div>
         <label>¿Qué tipo de trabajo buscás?</label>
@@ -117,92 +135,109 @@
         <input type="text" id="salario" placeholder="Ej: $500.000, lo que sea, a convenir...">
       </div>
 
+      <!-- HABILIDADES -->
       <div class="seccion-form">
         <div class="seccion-form-titulo">⭐ Habilidades y certificaciones</div>
-        <div class="toggles-wrap">
-          <button class="toggle-check" data-valor="Registro auto">🚗 Registro auto</button>
-          <button class="toggle-check" data-valor="Registro moto">🏍️ Registro moto</button>
-          <button class="toggle-check" data-valor="Registro camión">🚛 Registro camión</button>
-          <button class="toggle-check" data-valor="Manejo de autoelevador">🏗️ Auto-elevador</button>
-          <button class="toggle-check" data-valor="Manejo de PC">💻 Manejo de PC</button>
-          <button class="toggle-check" data-valor="Excel">📊 Excel</button>
-          <button class="toggle-check" data-valor="Inglés">🇺🇸 Inglés</button>
-          <button class="toggle-check" data-valor="Portugués">🇧🇷 Portugués</button>
-          <button class="toggle-check" data-valor="Atención al cliente">🤝 Atención al cliente</button>
-          <button class="toggle-check" data-valor="Trabajo en altura">🪜 Trabajo en altura</button>
-          <button class="toggle-check" data-valor="Soldadura">🔧 Soldadura</button>
-          <button class="toggle-check" data-valor="Electricidad">⚡ Electricidad</button>
-          <button class="toggle-check" data-valor="Plomería">🔩 Plomería</button>
-          <button class="toggle-check" data-valor="Cocina profesional">👨‍🍳 Cocina</button>
-          <button class="toggle-check" data-valor="Cuidado de personas">❤️ Cuidado de personas</button>
-          <button class="toggle-check" data-valor="Manejo de caja">💰 Manejo de caja</button>
-          <button class="toggle-check" data-valor="Ventas">📈 Ventas</button>
-          <button class="toggle-check" data-valor="Redes sociales">📱 Redes sociales</button>
-          <button class="toggle-check" data-valor="Diseño gráfico">🎨 Diseño gráfico</button>
-          <button class="toggle-check" data-valor="Fotografía">📷 Fotografía</button>
-          <button class="toggle-check" data-valor="Carpintería">🪚 Carpintería</button>
-          <button class="toggle-check" data-valor="Pintura">🖌️ Pintura</button>
+        <div class="habilidades-header" onclick="toggleHabilidades()">
+          <span>Tocá para elegir tus habilidades</span>
+          <span id="habilidades-arrow">▼</span>
         </div>
+        <div id="habilidades-lista" class="oculto">
+          <div class="toggles-wrap" style="margin-top:10px">
+            <button class="toggle-check" data-valor="Registro auto">🚗 Registro auto</button>
+            <button class="toggle-check" data-valor="Registro moto">🏍️ Registro moto</button>
+            <button class="toggle-check" data-valor="Registro camión">🚛 Registro camión</button>
+            <button class="toggle-check" data-valor="Manejo de autoelevador">🏗️ Auto-elevador</button>
+            <button class="toggle-check" data-valor="Manejo de PC">💻 Manejo de PC</button>
+            <button class="toggle-check" data-valor="Excel">📊 Excel</button>
+            <button class="toggle-check" data-valor="Inglés">🇺🇸 Inglés</button>
+            <button class="toggle-check" data-valor="Portugués">🇧🇷 Portugués</button>
+            <button class="toggle-check" data-valor="Atención al cliente">🤝 Atención al cliente</button>
+            <button class="toggle-check" data-valor="Trabajo en altura">🪜 Trabajo en altura</button>
+            <button class="toggle-check" data-valor="Soldadura">🔧 Soldadura</button>
+            <button class="toggle-check" data-valor="Electricidad">⚡ Electricidad</button>
+            <button class="toggle-check" data-valor="Plomería">🔩 Plomería</button>
+            <button class="toggle-check" data-valor="Cocina profesional">👨‍🍳 Cocina</button>
+            <button class="toggle-check" data-valor="Cuidado de personas">❤️ Cuidado de personas</button>
+            <button class="toggle-check" data-valor="Manejo de caja">💰 Manejo de caja</button>
+            <button class="toggle-check" data-valor="Ventas">📈 Ventas</button>
+            <button class="toggle-check" data-valor="Redes sociales">📱 Redes sociales</button>
+            <button class="toggle-check" data-valor="Diseño gráfico">🎨 Diseño gráfico</button>
+            <button class="toggle-check" data-valor="Fotografía">📷 Fotografía</button>
+            <button class="toggle-check" data-valor="Carpintería">🪚 Carpintería</button>
+            <button class="toggle-check" data-valor="Pintura">🖌️ Pintura</button>
+            <button class="toggle-check" data-valor="Jardinería">🌿 Jardinería</button>
+            <button class="toggle-check" data-valor="Mecánica">🔨 Mecánica</button>
+          </div>
+        </div>
+        <label style="margin-top:12px">O escribí habilidades adicionales</label>
+        <input type="text" id="habilidades-escritas" placeholder="Ej: control de stock, atención telefónica, trabajo nocturno...">
+        <div id="habilidades-seleccionadas" class="habilidades-preview"></div>
       </div>
 
+      <!-- CV -->
       <div class="seccion-form">
-        <div class="seccion-form-titulo">📄 Tu CV (opcional)</div>
+        <div class="seccion-form-titulo">📄 Tu CV</div>
+        <p style="color:#8899aa;font-size:13px;margin-bottom:12px">La IA usa tu CV para adaptarlo mejor a cada puesto</p>
         <div class="cv-opciones">
           <div class="cv-opcion" id="opcion-pdf" onclick="seleccionarOpcionCV('pdf')">
             <span class="cv-opcion-icono">📄</span>
             <div>
-              <div class="cv-opcion-titulo">Subir PDF</div>
-              <div class="cv-opcion-sub">La app extrae el texto</div>
-            </div>
-          </div>
-          <div class="cv-opcion" id="opcion-texto" onclick="seleccionarOpcionCV('texto')">
-            <span class="cv-opcion-icono">✏️</span>
-            <div>
-              <div class="cv-opcion-titulo">Pegar texto</div>
-              <div class="cv-opcion-sub">Copiá y pegá tu CV</div>
+              <div class="cv-opcion-titulo">Subir mi CV en PDF</div>
+              <div class="cv-opcion-sub">La app extrae el texto automáticamente</div>
             </div>
           </div>
           <div class="cv-opcion" id="opcion-generar" onclick="seleccionarOpcionCV('generar')">
             <span class="cv-opcion-icono">🤖</span>
             <div>
               <div class="cv-opcion-titulo">No tengo CV</div>
-              <div class="cv-opcion-sub">La IA lo genera</div>
+              <div class="cv-opcion-sub">La IA lo genera con tus datos</div>
             </div>
           </div>
         </div>
+
         <div id="zona-pdf" class="zona-cv oculto">
           <div class="upload-box" onclick="document.getElementById('input-pdf').click()">
             <span class="upload-icono">📁</span>
             <p>Tocá para seleccionar tu PDF</p>
+            <small>El texto se extrae automáticamente</small>
           </div>
           <input type="file" id="input-pdf" accept=".pdf" style="display:none" onchange="procesarPDF(this)">
           <div id="pdf-estado"></div>
         </div>
-        <div id="zona-texto" class="zona-cv oculto">
-          <textarea id="cv-texto" placeholder="Pegá el texto de tu CV acá..."></textarea>
-        </div>
+
         <div id="zona-generar" class="zona-cv oculto">
-          <p class="api-key-info">La IA va a generar tu CV con los datos que completaste arriba.</p>
-          <button class="btn-secundario" onclick="generarCVconIA()">🤖 Generar mi CV ahora</button>
+          <div class="aviso-ats" style="border-color:#7c3aed;background:#1a1050">
+            🤖 La IA va a tomar toda la información que completaste arriba y generará un CV profesional completo. No es una copia, es una transformación real.
+          </div>
+          <button class="btn-secundario" onclick="generarCVconIA()" style="margin-top:12px">
+            🤖 Generar mi CV profesional ahora
+          </button>
           <div id="cv-generado-preview"></div>
         </div>
       </div>
 
+      <!-- API KEY -->
       <div class="api-key-box">
         <div class="api-key-header" onclick="toggleAPIkey()">
-          <span>⚙️ Activar IA real (Gemini)</span>
+          <span>⚙️ Configuración de IA (Gemini)</span>
           <span id="api-key-arrow">▼</span>
         </div>
         <div id="api-key-zona" class="oculto">
-          <p class="api-key-info">Pegá tu API Key de aistudio.google.com para activar análisis real con IA.</p>
+          <p class="api-key-info">
+            Pegá tu API Key de <strong>aistudio.google.com</strong> para activar el análisis real con IA.
+            Una vez guardada no te la pedirá de nuevo.
+          </p>
           <input type="password" id="gemini-key" placeholder="Tu API Key de Gemini...">
-          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">💾 Guardar para siempre</button>
+          <button class="btn-secundario" style="margin-top:10px" onclick="guardarAPIkey()">
+            💾 Guardar para siempre
+          </button>
           <div id="api-key-estado"></div>
         </div>
       </div>
 
       <button class="btn-principal" onclick="guardarPerfilYBuscar()">
-        🔍 Buscar mis empleos
+        🔍 Buscar mis oportunidades
       </button>
     </div>
   </div>
@@ -215,8 +250,8 @@
       <div></div>
     </div>
     <div class="contenido">
-      <h2 id="titulo-resultados">Buscando empleos...</h2>
-      <p class="subtitulo" id="subtitulo-resultados">La IA está analizando las mejores opciones</p>
+      <h2 id="titulo-resultados">Buscando...</h2>
+      <p class="subtitulo" id="subtitulo-resultados"></p>
       <div id="lista-empleos"></div>
     </div>
   </div>
@@ -240,21 +275,21 @@
     </div>
     <div class="contenido">
       <h2>Tu CV adaptado</h2>
-      <p class="subtitulo" id="subtitulo-cv-adaptado">Optimizado para este puesto</p>
+      <p class="subtitulo" id="subtitulo-cv-adaptado"></p>
       <div id="cv-adaptado-contenido"></div>
-      <div style="display:flex;gap:10px;margin-top:16px">
-        <button class="btn-secundario" onclick="copiarCV()" style="flex:1">
+      <div class="botones-cv">
+        <button class="btn-cv-accion" onclick="copiarCV()">
           📋 Copiar
         </button>
-        <button class="btn-secundario" onclick="descargarCV()" style="flex:1;border-color:#22c55e;color:#22c55e">
+        <button class="btn-cv-accion verde" onclick="descargarCV()">
           ⬇️ Descargar PDF
         </button>
       </div>
       <button class="btn-principal" onclick="postularmeConCV()">
         💼 Ir a postularme
       </button>
-      <p style="text-align:center;color:#8899aa;font-size:12px;margin-top:10px">
-        Descargá tu CV adaptado y usalo cuando llegues al portal de empleo
+      <p class="hint-postular">
+        Descargá tu CV y usalo cuando llegues al portal de empleo
       </p>
     </div>
   </div>
@@ -282,20 +317,17 @@
       <h2>Términos y Condiciones</h2>
       <div class="terminos-texto">
         <p><strong>Última actualización:</strong> Junio 2025</p>
-        <p>Al usar LabuIA aceptás los siguientes términos:</p>
         <h3>1. Servicio</h3>
         <p>LabuIA es una plataforma de asistencia para búsqueda de empleo que utiliza Inteligencia Artificial para analizar compatibilidad laboral y adaptar CVs. Los empleos mostrados son provistos por Jooble y otros portales de terceros.</p>
         <h3>2. Datos personales</h3>
         <p>Tus datos se usan exclusivamente para generar tu CV y encontrar empleos compatibles. No vendemos ni compartimos tu información con terceros.</p>
         <h3>3. Empleos de terceros</h3>
-        <p>LabuIA muestra empleos provistos por Jooble. Al tocar "Postularme" serás redirigido al portal original de la oferta. LabuIA no es responsable del contenido de los empleos ni del proceso de selección de las empresas.</p>
+        <p>LabuIA muestra empleos provistos por Jooble. Al tocar "Ir a postularme" serás redirigido al portal original. LabuIA no es responsable del contenido de los empleos ni del proceso de selección.</p>
         <h3>4. IA y CV</h3>
         <p>Los CVs generados por IA son una herramienta de asistencia. El usuario es responsable de verificar que el contenido sea correcto antes de enviarlo.</p>
         <h3>5. Uso aceptable</h3>
-        <p>Está prohibido usar LabuIA para fines fraudulentos, crear perfiles falsos o postularse con información incorrecta.</p>
-        <h3>6. Modificaciones</h3>
-        <p>Nos reservamos el derecho de modificar estos términos. Los cambios serán notificados en la app.</p>
-        <p>Para consultas: <strong>labuia.app@gmail.com</strong></p>
+        <p>Está prohibido usar LabuIA para fines fraudulentos o crear perfiles con información falsa.</p>
+        <p style="margin-top:16px">Consultas: <strong>labuia.app@gmail.com</strong></p>
       </div>
     </div>
   </div>
@@ -312,17 +344,15 @@
       <div class="terminos-texto">
         <p><strong>Última actualización:</strong> Junio 2025</p>
         <h3>Qué datos recopilamos</h3>
-        <p>Nombre, email, celular, ciudad, experiencia laboral, estudios y habilidades que vos ingresás voluntariamente.</p>
+        <p>Nombre, email, celular, ciudad, experiencia laboral, estudios y habilidades que ingresás voluntariamente.</p>
         <h3>Cómo los usamos</h3>
-        <p>Exclusivamente para generar tu CV y encontrar empleos compatibles con tu perfil mediante IA.</p>
+        <p>Exclusivamente para generar tu CV y encontrar empleos compatibles mediante IA.</p>
         <h3>Dónde se guardan</h3>
         <p>Tus datos se almacenan en Firebase (Google) con encriptación de nivel empresarial.</p>
         <h3>No compartimos tus datos</h3>
-        <p>No vendemos, alquilamos ni compartimos tu información personal con terceros. Los empleos son consultados en tiempo real a Jooble sin enviar tus datos personales.</p>
+        <p>No vendemos ni compartimos tu información personal. Los empleos se consultan en tiempo real sin enviar tus datos personales.</p>
         <h3>Tus derechos</h3>
-        <p>Podés solicitar la eliminación de tu cuenta y datos en cualquier momento escribiendo a <strong>labuia.app@gmail.com</strong></p>
-        <h3>Cookies</h3>
-        <p>Usamos solo las cookies necesarias para mantener tu sesión activa. No usamos cookies de seguimiento publicitario.</p>
+        <p>Podés solicitar la eliminación de tu cuenta en cualquier momento escribiendo a <strong>labuia.app@gmail.com</strong></p>
       </div>
     </div>
   </div>
@@ -339,4 +369,4 @@
 
   <script type="module" src="app.js"></script>
 </body>
-    </html>
+        </html>
