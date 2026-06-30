@@ -434,24 +434,27 @@ textarea:focus { border-color: #7c3aed; }
   border-radius: 8px;
 }
 
-/* == BOTONES CV == */
+/* == BOTONES CV — 3 en fila == */
 .botones-cv {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: 16px;
 }
 
 .btn-cv-accion {
   flex: 1;
-  padding: 13px;
+  padding: 12px 6px;
   background: #1e1060;
   border: 2px solid #7c3aed;
   border-radius: 12px;
   color: #ffffff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
+  text-align: center;
 }
+
+.btn-cv-accion:active { opacity: 0.8; }
 
 .btn-cv-accion.verde {
   background: #0d2d1a;
@@ -691,4 +694,4 @@ textarea:focus { border-color: #7c3aed; }
   padding: 8px;
   border: 1px solid #1e3a6e;
   border-radius: 8px;
-  }
+}
