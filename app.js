@@ -213,6 +213,19 @@ document.querySelectorAll('.toggle-check').forEach(btn => {
 });
 
 // ============================================
+// TOGGLE HABILIDADES DESPLEGABLE
+// ============================================
+
+function toggleHabilidades() {
+  const lista = document.getElementById('habilidades-lista');
+  const arrow = document.getElementById('habilidades-arrow');
+  lista.classList.toggle('oculto');
+  arrow.textContent = lista.classList.contains('oculto') ? '▼' : '▲';
+}
+
+window.toggleHabilidades = toggleHabilidades;
+
+// ============================================
 // API KEY
 // ============================================
 
