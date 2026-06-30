@@ -364,8 +364,7 @@ async function llamarGemini(prompt, apiKey) {
       const res = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
@@ -635,8 +634,11 @@ async function obtenerEmpleosJooble(puesto, ciudad) {
         esUbicacionArgentina(job.location || '')
       );
 
-      // Si el filtro dejó algo, usamos eso; si no, usamos todos (puede ser que Jooble no especificó bien la ubicación)
-      const listaFinal = empleosArgentina.length > 0 ? empleosArgentina : data.jobs;
+      // Si no hay empleos argentinos, usar respaldo en vez de mostrar empleos de EE.UU.
+      if (empleosArgentina.length === 0) return generarEmpleosRespaldo(puesto, ciudad);
+      const listaFinal = empleosArgentina;
+
+
 
       return listaFinal.slice(0, 15).map((job, i) => ({
         id: i + 1,
