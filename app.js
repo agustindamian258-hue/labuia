@@ -106,7 +106,16 @@ async function cargarPerfilFirebase(uid) {
       const infoEx = document.getElementById('info-extra');
       if (infoEx && datos.infoExtra) infoEx.value = datos.infoExtra;
       if (datos.cv) cvFinal = datos.cv;
-      if (datos.fotoPerfil) perfil.fotoPerfil = datos.fotoPerfil;
+      if (datos.fotoPerfil) {
+        perfil.fotoPerfil = datos.fotoPerfil;
+        const previewFoto = document.getElementById('preview-foto');
+        const placeholder = document.getElementById('foto-placeholder');
+        if (previewFoto && placeholder) {
+          previewFoto.src = datos.fotoPerfil;
+          previewFoto.style.display = 'block';
+          placeholder.style.display = 'none';
+        }
+      }
 
       if (datos.geminiKey) {
         localStorage.setItem('labuia_gemini_key', datos.geminiKey);
