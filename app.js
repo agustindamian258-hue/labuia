@@ -2,7 +2,8 @@
 // LABUIA - App principal
 // ============================================
 
-import { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc }
+import { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc,
+  browserLocalPersistence, setPersistence }
   from './firebase-config.js';
 
 const JOOBLE_API_KEY = '9a26ed6d-5b55-40aa-807f-e5ea117782ca';
@@ -19,6 +20,12 @@ let cvFinal = '';
 let opcionCVactual = '';
 let cvAdaptadoTexto = '';
 let usuarioActual = null;
+
+function obtenerAPIkey() {
+  return perfil.geminiKey
+    || localStorage.getItem('labuia_gemini_key')
+    || '';
+}
 
 pdfjsLib.GlobalWorkerOptions.workerSrc =
   'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -47,12 +54,11 @@ onAuthStateChanged(auth, async (usuario) => {
 
 async function loginConGoogle() {
   try {
-    // Usar redirect en vez de popup para mantener sesión mejor en móvil
-    const { GoogleAuthProvider, signInWithRedirect } = await import(
-      'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js'
-    );
+    await setPersistence(auth, browserLocalPersistence);
+    provider.setCustomParameters({ prompt: 'select_account' });
     await signInWithPopup(auth, provider);
   } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user') return;
     console.log('Error login:', e);
     alert('Error al iniciar sesión. Intentá de nuevo.');
   }
@@ -428,7 +434,7 @@ async function generarCVconIA() {
   preview.style.display = 'block';
   preview.textContent = '⏳ Generando tu CV profesional con IA...';
 
-  const apiKey = localStorage.getItem('labuia_gemini_key') || '';
+  const apiKey = obtenerAPIkey();
   const puesto = perfil.puestoBuscado || document.getElementById('puesto-buscado').value.trim();
 
   if (!apiKey) {
@@ -515,7 +521,7 @@ async function guardarPerfilYBuscar() {
     horarios, habilidades: habilidadesFinales,
     cv: cvFinal,
     fotoPerfil: perfil.fotoPerfil || '',
-    geminiKey: localStorage.getItem('labuia_gemini_key') || ''
+    geminiKey: obtenerAPIkey()
   };
 
   if (usuarioActual) await guardarPerfilFirebase(usuarioActual.uid, perfil);
@@ -542,7 +548,7 @@ async function buscarEmpleos(puesto, ciudad) {
 
   try {
     const empleos = await obtenerEmpleosJooble(puesto, ciudad);
-    const apiKey = localStorage.getItem('labuia_gemini_key') || '';
+    const apiKey = obtenerAPIkey();
     const analizados = apiKey
       ? await analizarConIA(empleos, puesto)
       : empleos.map((e, i) => ({
@@ -685,7 +691,7 @@ function generarEmpleosRespaldo(puesto, ciudad) {
 // ============================================
 
 async function analizarConIA(empleos, puesto) {
-  const apiKey = localStorage.getItem('labuia_gemini_key') || '';
+  const apiKey = obtenerAPIkey();
   const perfilTexto = construirPerfilTexto();
   const resultado = [];
 
@@ -832,7 +838,7 @@ async function adaptarCV() {
     </div>
   `;
 
-  const apiKey = localStorage.getItem('labuia_gemini_key') || '';
+  const apiKey = obtenerAPIkey();
   const esGrande = emp.esEmpresaGrande;
 
   const formatoInstruccion = esGrande
