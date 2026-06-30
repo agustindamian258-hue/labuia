@@ -251,7 +251,7 @@
     </div>
     <div class="contenido">
       <h2 id="titulo-resultados">Buscando...</h2>
-      <p class="subtitulo" id="subtitulo-resultados"></p>
+      <p class="subtitulo" id="subtitulo-resultados">Buscando tu próxima oportunidad</p>
       <div id="lista-empleos"></div>
     </div>
   </div>
@@ -278,16 +278,16 @@
       <p class="subtitulo" id="subtitulo-cv-adaptado"></p>
       <div id="cv-adaptado-contenido"></div>
       <div class="botones-cv">
-        <button class="btn-cv-accion" onclick="copiarCV()">
-          📋 Copiar
+        <button class="btn-cv-accion" onclick="adaptarCV()">
+          📄 Adaptar CV
         </button>
-        <button class="btn-cv-accion verde" onclick="descargarCV()">
+        <button class="btn-cv-accion" onclick="descargarCV()">
           ⬇️ Descargar PDF
         </button>
+        <button class="btn-cv-accion verde" onclick="postularmeConCV()">
+          💼 Postularme
+        </button>
       </div>
-      <button class="btn-principal" onclick="postularmeConCV()">
-        💼 Ir a postularme
-      </button>
       <p class="hint-postular">
         Descargá tu CV y usalo cuando llegues al portal de empleo
       </p>
@@ -318,11 +318,11 @@
       <div class="terminos-texto">
         <p><strong>Última actualización:</strong> Junio 2025</p>
         <h3>1. Servicio</h3>
-        <p>LabuIA es una plataforma de asistencia para búsqueda de empleo que utiliza Inteligencia Artificial para analizar compatibilidad laboral y adaptar CVs. Los empleos mostrados son provistos por Jooble y otros portales de terceros.</p>
+        <p>LabuIA es una plataforma de asistencia para búsqueda de empleo que utiliza Inteligencia Artificial para analizar compatibilidad laboral y adaptar CVs.</p>
         <h3>2. Datos personales</h3>
         <p>Tus datos se usan exclusivamente para generar tu CV y encontrar empleos compatibles. No vendemos ni compartimos tu información con terceros.</p>
-        <h3>3. Empleos de terceros</h3>
-        <p>LabuIA muestra empleos provistos por Jooble. Al tocar "Ir a postularme" serás redirigido al portal original. LabuIA no es responsable del contenido de los empleos ni del proceso de selección.</p>
+        <h3>3. Empleos</h3>
+        <p>LabuIA busca empleos en portales de terceros. Al tocar "Ir a postularme" serás redirigido al portal original. LabuIA no es responsable del contenido de los empleos ni del proceso de selección.</p>
         <h3>4. IA y CV</h3>
         <p>Los CVs generados por IA son una herramienta de asistencia. El usuario es responsable de verificar que el contenido sea correcto antes de enviarlo.</p>
         <h3>5. Uso aceptable</h3>
@@ -369,4 +369,4 @@
 
   <script type="module" src="app.js"></script>
 </body>
-        </html>
+</html>
